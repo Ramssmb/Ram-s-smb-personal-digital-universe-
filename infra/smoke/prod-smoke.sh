@@ -86,9 +86,17 @@ login
 "${CURL[@]}" -o /dev/null "$BASE/media/$key" || fail "uploaded image was lost on restart"
 
 step "The app shuts down gracefully"
+started=$(date +%s)
 "${COMPOSE[@]}" stop -t 20 app
+took=$(( $(date +%s) - started ))
 code=$(docker inspect --format '{{.State.ExitCode}}' "$("${COMPOSE[@]}" ps -a -q app)")
-test "$code" = "0" || fail "app exit code $code on stop (expected 0, 137 means it was killed)"
+# Next.js closes the server on SIGTERM, then exits with 143 (128 + SIGTERM) by
+# convention. 137 would mean Docker had to SIGKILL it after the grace period.
+case "$code" in
+  0 | 143) echo "app stopped cleanly in ${took}s (exit $code)" ;;
+  *) fail "app exit code $code on stop after ${took}s (137 = killed after the grace period)" ;;
+esac
+test "$took" -lt 15 || fail "app took ${took}s to stop; it is not reacting to SIGTERM"
 
 echo
 echo "Production smoke test passed."

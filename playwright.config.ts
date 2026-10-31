@@ -27,7 +27,8 @@ export default defineConfig({
     { name: "setup", testMatch: /global\.setup\.ts/ },
     {
       name: "admin",
-      testMatch: /admin\.spec\.ts/,
+      // admin.spec.ts runs first (alphabetical), then admin.workflows.spec.ts.
+      testMatch: /admin(\.workflows)?\.spec\.ts/,
       dependencies: ["setup"],
       use: {
         ...devices["Desktop Chrome"],

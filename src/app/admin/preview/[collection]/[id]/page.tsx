@@ -8,8 +8,11 @@ import { Prose } from "@/components/public/content";
 import { SiteHeader } from "@/components/site/site-header";
 import { Badge } from "@/components/ui/display";
 import { Container } from "@/components/ui/layout";
+import { ExternalLink } from "@/components/ui/text-link";
 import { COLLECTIONS, isCollectionKey, type CollectionKey } from "@/lib/content/collections";
 import { label } from "@/lib/content/enums";
+import type { FieldDef } from "@/lib/content/fields";
+import { formatDate } from "@/lib/format";
 import { requireAdminPage } from "@/server/auth/guard";
 import {
   getIdentity,
@@ -17,6 +20,7 @@ import {
   getProjectForPreview,
 } from "@/server/content/public";
 import { getItem } from "@/server/content/service";
+import type { LinkItem } from "@/server/db/schema";
 import { AppError } from "@/server/http/errors";
 
 export const metadata: Metadata = { title: "Preview", robots: { index: false, follow: false } };
@@ -71,21 +75,84 @@ export default async function PreviewPage({ params }: Params) {
         {loaded.kind === "journal" && loaded.data && <JournalArticle entry={loaded.data} />}
         {loaded.kind === "generic" && (
           <Container width="prose" className="py-16">
-            <h1 className="text-h1 font-semibold">
+            <p className="eyebrow">{def.singular}</p>
+            <h1 className="mt-2 text-h1 font-semibold">
               {String(loaded.data[def.titleField] ?? def.singular)}
             </h1>
-            <div className="mt-8 flex flex-col gap-8">
+            <dl className="mt-10 flex flex-col gap-8">
               {def.fields
-                .filter((field) => field.kind === "markdown")
+                .filter(
+                  (field) => field.name !== def.titleField && hasValue(loaded.data[field.name]),
+                )
                 .map((field) => (
-                  <section key={field.name}>
-                    <Prose markdown={loaded.data[field.name] as string} />
-                  </section>
+                  <div key={field.name} className="flex flex-col gap-2">
+                    <dt className="eyebrow">{field.label}</dt>
+                    <dd>
+                      <FieldValue field={field} value={loaded.data[field.name]} />
+                    </dd>
+                  </div>
                 ))}
-            </div>
+            </dl>
           </Container>
         )}
       </main>
     </>
   );
+}
+
+function hasValue(value: unknown): boolean {
+  if (value === null || value === undefined || value === false) return false;
+  if (typeof value === "string") return value.trim() !== "";
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+/** Shows a stored value the way the public pages present it. */
+function FieldValue({ field, value }: { field: FieldDef; value: unknown }) {
+  switch (field.kind) {
+    case "markdown":
+      return <Prose markdown={value as string} />;
+    case "url":
+      return (
+        <ExternalLink href={value as string} newTab>
+          {value as string}
+        </ExternalLink>
+      );
+    case "date":
+      return <span className="font-mono">{formatDate(value as string)}</span>;
+    case "select":
+      return <span>{label(value as string)}</span>;
+    case "boolean":
+      return <span>Yes</span>;
+    case "string-list":
+      return (
+        <ul className="prose list-disc">
+          {(value as string[]).map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      );
+    case "link-list":
+      return (
+        <ul className="flex flex-col gap-1">
+          {(value as LinkItem[]).map((link) => (
+            <li key={link.url}>
+              <ExternalLink href={link.url} newTab>
+                {link.label}
+              </ExternalLink>
+            </li>
+          ))}
+        </ul>
+      );
+    case "category":
+    case "media":
+    case "relation-many":
+    case "media-many":
+      // Linked items are shown on the public page once both sides are published.
+      return (
+        <span className="text-fg-muted">Linked ({Array.isArray(value) ? value.length : 1})</span>
+      );
+    default:
+      return <p className="whitespace-pre-wrap">{String(value)}</p>;
+  }
 }

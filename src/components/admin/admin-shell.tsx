@@ -173,9 +173,15 @@ export function AdminShell({
                 </RadixDialog.Content>
               </RadixDialog.Portal>
             </RadixDialog.Root>
-            <Link href="/admin/content/journal/new" className={buttonClasses("primary", "sm")}>
+            {/* Short label on phones; the accessible name stays the same at every size. */}
+            <Link
+              href="/admin/content/journal/new"
+              aria-label="New journal entry"
+              className={buttonClasses("primary", "sm")}
+            >
               <PenLine aria-hidden="true" className="size-4" />
-              <span>New journal entry</span>
+              <span className="sm:hidden">New</span>
+              <span className="hidden sm:inline">New journal entry</span>
             </Link>
           </div>
           <div className="flex items-center gap-1">
@@ -201,9 +207,10 @@ export function AdminShell({
               size="sm"
               onClick={signOut}
               loading={signingOut}
+              aria-label="Sign out"
               icon={<LogOut aria-hidden="true" className="size-4" />}
             >
-              Sign out
+              <span className="hidden sm:inline">Sign out</span>
             </Button>
           </div>
         </header>

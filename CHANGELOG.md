@@ -2,6 +2,32 @@
 
 All notable changes to this project. Dates are UTC.
 
+## [0.2.1] — 2026-11-01
+
+### Fixed
+
+- **Caddy failed to start** when `ACME_EMAIL` was empty (the global `email`
+  option had no argument). The option is now an opt-in comment.
+- **Logs could contain personal data:** database errors embed the failed query
+  and its parameters; errors are now logged through a serializer that drops both.
+- **Database URLs broke with base64 secrets** containing `/`, `+` or `=`; the docs
+  now generate hex secrets.
+- **Dashboard overflowed sideways on phones** (top bar labels); compact labels on
+  small screens with unchanged accessible names.
+- **Colour-only link** (sender email on the Messages page) failed WCAG 1.4.1; now underlined.
+
+### Added
+
+- Draft previews for every content type show all filled-in fields (dates,
+  links, lists), not just Markdown.
+- App container runs with an init process and stop grace periods.
+- Production smoke test (`infra/smoke/prod-smoke.sh`): Caddyfile validation, HTTP→HTTPS
+  redirect, sign-in over HTTPS, image upload, persistence across a full restart,
+  graceful shutdown.
+- End-to-end coverage for every content type, unpublish, visibility, permanent
+  delete, cover image via the picker, draft previews, anonymous access to private
+  content, axe checks on 10 dashboard pages in both themes, and the dashboard on a phone.
+
 ## [0.2.0] — 2026-11-01
 
 The complete application: database-backed public site, private CMS, media,

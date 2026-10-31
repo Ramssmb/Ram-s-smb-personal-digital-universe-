@@ -69,7 +69,10 @@ export default async function MessagesPage({
                   <p className="font-semibold">{message.subject || "(no subject)"}</p>
                   <p className="truncate text-small text-fg-muted">
                     {message.name} ·{" "}
-                    <a href={`mailto:${message.email}`} className="text-accent">
+                    <a
+                      href={`mailto:${message.email}`}
+                      className="text-accent underline underline-offset-2"
+                    >
                       {message.email}
                     </a>{" "}
                     ·{" "}

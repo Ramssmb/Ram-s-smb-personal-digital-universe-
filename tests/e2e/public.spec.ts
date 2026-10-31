@@ -19,8 +19,11 @@ const PAGES = [
 
 async function expectNoAxeViolations(page: Page) {
   // Measure the settled page: mid-animation opacity would distort the contrast check.
+  // Infinite animations (loading skeletons, spinners) never finish; wait for the rest.
   await page.waitForFunction(() =>
-    document.getAnimations().every((a) => a.playState !== "running"),
+    document
+      .getAnimations()
+      .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
   );
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag22aa"])

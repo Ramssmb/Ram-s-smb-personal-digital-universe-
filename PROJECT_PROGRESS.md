@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: 2026-11-01 · Version 0.2.0
+Last updated: 2026-11-01 · Version 0.2.1
 
 ## Status
 
@@ -45,12 +45,12 @@ facts.
 
 ## Test results (2026-11-01, run locally on PostgreSQL 17)
 
-| Suite                             | Result                         | Covers                                                                                                                                                                               |
-| --------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Unit (Vitest)                     | **103 passed**                 | Config validation, field schemas, unsafe URLs, impossible dates, Markdown XSS sanitizing, file signatures, client-IP parsing, form tokens, components                                |
-| Integration (Vitest)              | **105 passed**                 | Schema constraints, least-privilege DB role, login/lockout/sessions/password change, 401 + CSRF 403 on all 13 admin route files, content lifecycle for every section, media, contact |
-| End-to-end (Playwright)           | **75 passed** (twice in a row) | Owner workflows through the UI; 13 public pages × phone/tablet/desktop × light/dark with axe (WCAG 2.2 AA); navigation, filters, CSP, SEO endpoints                                  |
-| Lint / typecheck / format / build | Clean                          |                                                                                                                                                                                      |
+| Suite                             | Result         | Covers                                                                                                                                                                                                                                                                              |
+| --------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit (Vitest)                     | **106 passed** | Config validation, field schemas, unsafe URLs, impossible dates, Markdown XSS sanitizing, file signatures, client-IP parsing, form tokens, components                                                                                                                               |
+| Integration (Vitest)              | **105 passed** | Schema constraints, least-privilege DB role, login/lockout/sessions/password change, 401 + CSRF 403 on all 13 admin route files, content lifecycle for every section, media, contact                                                                                                |
+| End-to-end (Playwright)           | **83 passed**  | Owner workflows through the UI for every content type (create, preview, publish, edit, unpublish, visibility, archive, delete, media); anonymous access blocked; axe on 10 dashboard pages and 13 public pages (× phone/tablet/desktop × light/dark); navigation, filters, CSP, SEO |
+| Lint / typecheck / format / build | Clean          |                                                                                                                                                                                                                                                                                     |
 
 A deliberate mutation check (removing the "published" condition from the
 visibility rule) made the content tests fail, confirming they detect leaks.
