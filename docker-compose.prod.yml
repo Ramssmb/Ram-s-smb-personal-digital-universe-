@@ -1,0 +1,100 @@
+# Production stack for a single VPS (docs/DEPLOYMENT.md).
+#
+#   cp .env.production.example .env.production   # fill in real values
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Caddy terminates HTTPS (automatic Let's Encrypt certificates) and is the only
+# service with published ports. PostgreSQL is never exposed to the internet.
+
+name: personal-site
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+      POSTGRES_DB: postgres
+      SITE_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?set DB_OWNER_PASSWORD}
+      SITE_APP_PASSWORD: ${DB_APP_PASSWORD:?set DB_APP_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./infra/postgres/prod-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d personal_site"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [backend]
+
+  # Applies migrations, then exits. The app starts only after it succeeded.
+  migrate:
+    build: { context: ., target: tools }
+    environment:
+      MIGRATION_DATABASE_URL: postgres://site_owner:${DB_OWNER_PASSWORD}@db:5432/personal_site
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+    networks: [backend]
+
+  # One-off administration: docker compose -f docker-compose.prod.yml run --rm tools npm run admin:create
+  tools:
+    build: { context: ., target: tools }
+    profiles: [tools]
+    environment:
+      DATABASE_URL: postgres://site_app:${DB_APP_PASSWORD}@db:5432/personal_site
+      MIGRATION_DATABASE_URL: postgres://site_owner:${DB_OWNER_PASSWORD}@db:5432/personal_site
+      SITE_URL: https://${DOMAIN}
+      APP_SECRET: ${APP_SECRET}
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [backend]
+
+  app:
+    build: { context: ., target: runner }
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://site_app:${DB_APP_PASSWORD}@db:5432/personal_site
+      SITE_URL: https://${DOMAIN:?set DOMAIN}
+      APP_SECRET: ${APP_SECRET:?set APP_SECRET}
+      TRUST_PROXY_HOPS: "1"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - media:/data/storage
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    read_only: true
+    tmpfs: [/tmp, /app/.next/cache]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [backend, frontend]
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [app]
+    networks: [frontend]
+
+volumes:
+  db-data:
+  media:
+  caddy-data:
+  caddy-config:
+
+networks:
+  frontend:
+  backend:
+    internal: true

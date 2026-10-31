@@ -1,4 +1,4 @@
--- Local development and CI only. Creates the two databases and the two roles
+-- Local development and CI only. Creates the databases (dev, test, e2e) and the two roles
 -- from docs/DATABASE_DESIGN.md §17:
 --   site_owner  owns the schema; used only to run migrations
 --   site_app    the web process; may read and write rows, cannot change the schema
@@ -10,6 +10,7 @@ CREATE ROLE site_app LOGIN PASSWORD 'site_app_dev';
 
 CREATE DATABASE personal_site OWNER site_owner;
 CREATE DATABASE personal_site_test OWNER site_owner;
+CREATE DATABASE personal_site_e2e OWNER site_owner;
 
 \connect personal_site
 REVOKE ALL ON DATABASE personal_site FROM PUBLIC;
@@ -25,6 +26,17 @@ ALTER DEFAULT PRIVILEGES FOR ROLE site_owner IN SCHEMA public
 \connect personal_site_test
 REVOKE ALL ON DATABASE personal_site_test FROM PUBLIC;
 GRANT CONNECT ON DATABASE personal_site_test TO site_app;
+ALTER SCHEMA public OWNER TO site_owner;
+REVOKE ALL ON SCHEMA public FROM PUBLIC;
+GRANT USAGE ON SCHEMA public TO site_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE site_owner IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO site_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE site_owner IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO site_app;
+
+\connect personal_site_e2e
+REVOKE ALL ON DATABASE personal_site_e2e FROM PUBLIC;
+GRANT CONNECT ON DATABASE personal_site_e2e TO site_app;
 ALTER SCHEMA public OWNER TO site_owner;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO site_app;

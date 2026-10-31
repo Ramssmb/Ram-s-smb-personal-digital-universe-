@@ -1,8 +1,8 @@
 # Design system
 
-> Status: **Phase 2 — Design direction.** Implemented in Phase 3 as tokens in
-> `src/app/globals.css` and components in `src/components/ui/`. A living
-> reference page at `/admin/design` shows every component in both themes.
+> Status: **Implemented (v0.2.0)** in `src/app/globals.css` and `src/components/`.
+> The living reference is `/admin/design` (owner only). Components listed below
+> that are not yet needed (Tabs, Combobox, Toast, command palette) are not built.
 
 ## 1. Principles
 

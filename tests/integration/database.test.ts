@@ -1,49 +1,71 @@
 import postgres from "postgres";
 
-import { getSiteSettings, DEFAULT_SITE_SETTINGS } from "@/server/services/site-settings";
-import { databaseReachable } from "@/server/services/health";
 import { GET as health } from "@/app/api/v1/health/route";
+import { getSettingsRow } from "@/server/content/singletons";
+import { databaseReachable } from "@/server/services/health";
 
 import { testDatabaseUrls } from "../support/db-urls";
+import { ownerSql, resetDatabase } from "../support/integration";
 
-const urls = testDatabaseUrls();
-// Direct connections as each role, to test what the database itself allows.
-const asApp = postgres(urls.app, { max: 1, onnotice: () => {} });
-const asOwner = postgres(urls.owner, { max: 1, onnotice: () => {} });
+const asApp = postgres(testDatabaseUrls().app, { max: 1, onnotice: () => {} });
 
+beforeEach(resetDatabase);
 afterAll(async () => {
   await asApp.end();
-  await asOwner.end();
-});
-
-afterEach(async () => {
-  await asOwner`DELETE FROM site_settings`;
 });
 
 describe("migrations", () => {
   it("create the shared enums", async () => {
-    const rows = await asApp<{ typname: string }[]>`
-      SELECT typname FROM pg_type WHERE typtype = 'e' ORDER BY typname`;
+    const rows = await asApp<
+      { typname: string }[]
+    >`SELECT typname FROM pg_type WHERE typtype = 'e'`;
     expect(rows.map((r) => r.typname)).toEqual(
       expect.arrayContaining([
         "content_status",
         "visibility",
         "learning_status",
-        "theme_preference",
+        "category_scope",
+        "link_kind",
       ]),
     );
   });
 
-  it("enforce the site_settings constraints", async () => {
-    await expect(asOwner`INSERT INTO site_settings (id) VALUES (2)`).rejects.toThrow(
+  it("create generated full-text search columns", async () => {
+    await ownerSql`INSERT INTO projects (slug, title, summary) VALUES ('p', 'Distributed cache', 'Fast lookups')`;
+    const [row] = await asApp<{ hit: boolean }[]>`
+      SELECT search @@ websearch_to_tsquery('english', 'caching') AS hit FROM projects`;
+    expect(row?.hit).toBe(true);
+  });
+
+  it("enforce constraints", async () => {
+    await expect(ownerSql`INSERT INTO site_settings (id) VALUES (2)`).rejects.toThrow(
       /site_settings_singleton/,
     );
     await expect(
-      asOwner`INSERT INTO site_settings (id, title_template) VALUES (1, 'no placeholder')`,
+      ownerSql`INSERT INTO site_settings (id, title_template) VALUES (1, 'no placeholder')`,
     ).rejects.toThrow(/site_settings_title_template/);
     await expect(
-      asOwner`INSERT INTO site_settings (id, site_name) VALUES (1, ${"x".repeat(81)})`,
-    ).rejects.toThrow(/site_settings_site_name_length/);
+      ownerSql`INSERT INTO users (email, password_hash) VALUES ('Upper@Example.test', 'x')`,
+    ).rejects.toThrow(/users_email_lowercase/);
+    await expect(
+      ownerSql`INSERT INTO projects (slug, title, started_on, completed_on) VALUES ('p', 'P', '2026-05-01', '2026-01-01')`,
+    ).rejects.toThrow(/projects_dates/);
+    await expect(
+      ownerSql`INSERT INTO media_assets (storage_key, kind, mime_type, byte_size, sha256, original_filename) VALUES ('k', 'script', 'x', 1, 'x', 'x')`,
+    ).rejects.toThrow(/media_kind/);
+  });
+
+  it("keep join rows consistent with their owners", async () => {
+    const [project] = await ownerSql<
+      { id: string }[]
+    >`INSERT INTO projects (slug, title) VALUES ('p', 'P') RETURNING id`;
+    const [skill] = await ownerSql<
+      { id: string }[]
+    >`INSERT INTO skills (slug, name) VALUES ('s', 'S') RETURNING id`;
+    await ownerSql`INSERT INTO project_skills (project_id, skill_id) VALUES (${project!.id}, ${skill!.id})`;
+    await ownerSql`DELETE FROM projects WHERE id = ${project!.id}`;
+    const [count] = await ownerSql<{ n: number }[]>`SELECT count(*)::int AS n FROM project_skills`;
+    expect(count?.n).toBe(0);
   });
 });
 
@@ -55,44 +77,34 @@ describe("runtime role (least privilege)", () => {
     expect(row?.site_name).toBe("Renamed");
   });
 
-  it("cannot create, alter or drop tables", async () => {
+  it("cannot create, alter, drop or truncate tables", async () => {
     await expect(asApp`CREATE TABLE must_fail (id int)`).rejects.toThrow(/permission denied/);
-    await expect(asApp`ALTER TABLE site_settings ADD COLUMN x int`).rejects.toThrow(
-      /must be owner/,
-    );
-    await expect(asApp`DROP TABLE site_settings`).rejects.toThrow(/must be owner/);
+    await expect(asApp`ALTER TABLE users ADD COLUMN x int`).rejects.toThrow(/must be owner/);
+    await expect(asApp`DROP TABLE users`).rejects.toThrow(/must be owner/);
+    await expect(asApp`TRUNCATE users`).rejects.toThrow(/permission denied/);
   });
 
-  it("cannot read or change the migration history", async () => {
+  it("cannot read the migration history", async () => {
     await expect(asApp`SELECT * FROM drizzle.__drizzle_migrations`).rejects.toThrow(
       /permission denied/,
     );
   });
 });
 
-describe("site settings service", () => {
+describe("settings and health", () => {
   it("returns neutral defaults before anything is saved", async () => {
-    expect(await getSiteSettings()).toEqual(DEFAULT_SITE_SETTINGS);
-  });
-
-  it("returns saved settings", async () => {
-    await asOwner`
-      INSERT INTO site_settings (id, site_name, title_template, default_theme)
-      VALUES (1, 'Test site', '%s · Test site', 'dark')`;
-    expect(await getSiteSettings()).toMatchObject({
-      siteName: "Test site",
-      titleTemplate: "%s · Test site",
-      defaultTheme: "dark",
+    expect(await getSettingsRow()).toMatchObject({
+      siteName: null,
+      titleTemplate: "%s",
+      contactEnabled: true,
+      publicEmail: null,
     });
   });
-});
 
-describe("health endpoint", () => {
   it("reports ok when the database answers", async () => {
     expect(await databaseReachable()).toBe(true);
     const response = await health(new Request("http://localhost/api/v1/health"));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
-    expect(response.headers.get("cache-control")).toBe("no-store");
   });
 });

@@ -213,3 +213,54 @@
     }
   }
 }
+
+/* Rendered Markdown (owner-written, sanitized on the server). */
+@utility prose {
+  @apply max-w-[68ch] text-body text-fg;
+
+  & > * + * {
+    margin-top: 1em;
+  }
+  & h1,
+  & h2 {
+    @apply mt-10 text-h3 font-semibold;
+  }
+  & h3,
+  & h4 {
+    @apply mt-8 text-body-lg font-semibold;
+  }
+  & a {
+    @apply font-medium text-accent underline decoration-accent/30 underline-offset-4 hover:decoration-accent;
+  }
+  & ul {
+    @apply list-disc pl-6;
+  }
+  & ol {
+    @apply list-decimal pl-6;
+  }
+  & li + li {
+    margin-top: 0.35em;
+  }
+  & blockquote {
+    @apply border-l-2 border-line-strong pl-4 text-fg-muted;
+  }
+  & code {
+    @apply rounded bg-surface-muted px-1.5 py-0.5 font-mono text-[0.875em];
+  }
+  & pre {
+    @apply overflow-x-auto rounded-[var(--radius-button)] border border-line bg-surface-muted p-4 text-small leading-relaxed;
+  }
+  & pre code {
+    @apply bg-transparent p-0;
+  }
+  & hr {
+    @apply my-8 border-line;
+  }
+  & table {
+    @apply block overflow-x-auto text-small;
+  }
+  & th,
+  & td {
+    @apply border border-line px-3 py-2 text-left;
+  }
+}

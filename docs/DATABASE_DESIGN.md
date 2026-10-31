@@ -334,3 +334,24 @@ Seeds contain **structure only**: enum values, skill/resource/link categories, t
 nine empty about sections, the education row with owner-verified facts, and
 default site settings. **No invented personal content.** Every seeded content
 row is `draft`.
+
+## 19. As built (v0.2.0)
+
+Migrations `0000` and `0001` implement this design with these refinements:
+
+- `courses` and `academic_milestones` are not separate tables: coursework is a
+  `jsonb` list on `education`, and milestones are `achievements` with kind
+  `academic`.
+- Skill, project and resource categories share one `categories` table with a
+  `scope` column (`category_scope` enum); `link_categories` became the
+  `link_kind` enum on `links`, and `links.icon` names a bundled icon.
+- `seo_overrides` is `seo_pages` (title/description per fixed public page);
+  projects carry their own `seo_title` / `seo_description`.
+- `achievement_kind` gained `publication` and `recognition`; `resource_kind`
+  and `theme_preference` enums were added.
+- `users.email` is stored lower-case (check constraint) instead of `citext`.
+- `sessions` has no `mfa_verified` column and `users` has no TOTP columns
+  (two-factor authentication is a follow-up).
+- Search columns are generated `tsvector` columns with GIN indexes on skills,
+  projects, experiences, certifications, achievements, journal entries and
+  resources. The query also falls back to a title substring match.

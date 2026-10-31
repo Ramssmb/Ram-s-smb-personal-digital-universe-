@@ -133,3 +133,30 @@ incomplete.
 | Journal entry  | `journal`, `journal:<slug>`, `journal-archive`, `home`, `feed`, `search`, `sitemap` |
 | Skill          | `skills`, `home`, every page that lists it, `search`                                |
 | Settings / SEO | all (`layout`)                                                                      |
+
+## 7. As built (v0.2.0)
+
+| Method             | Path                                                                             | Notes                                                              |
+| ------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| GET, POST          | `/api/v1/admin/collections/:collection`                                          | List (`q`, `status`, `page`, `pageSize`) / create (always a draft) |
+| GET, PATCH, DELETE | `/api/v1/admin/collections/:collection/:id`                                      | PATCH body `{ data, updatedAt }`; stale `updatedAt` → 409          |
+| POST               | `/api/v1/admin/collections/:collection/:id/(publish\|unpublish\|archive\|flags)` | `flags` body `{ visibility?, isFeatured? }`                        |
+| POST               | `/api/v1/admin/collections/:collection/reorder`                                  | `{ ids: [...] }`                                                   |
+| GET, PUT           | `/api/v1/admin/profile`, `/api/v1/admin/settings`                                | Singletons                                                         |
+| PUT                | `/api/v1/admin/seo/:key`                                                         | Fixed page keys only                                               |
+| GET, POST          | `/api/v1/admin/media`                                                            | Upload is `multipart/form-data` (`file`, `access`, `altText`)      |
+| GET, PATCH, DELETE | `/api/v1/admin/media/:id`                                                        | Delete or make private → 409 while in use                          |
+| GET                | `/api/v1/admin/media/:id/file`                                                   | Owner-only file stream (works for private files)                   |
+| PATCH, DELETE      | `/api/v1/admin/messages/:id`                                                     | Status `new`/`read`/`archived`/`spam`                              |
+| POST               | `/api/v1/admin/account/password`                                                 | Signs out every other session                                      |
+| DELETE             | `/api/v1/admin/account/sessions`                                                 | Signs out other sessions                                           |
+| POST               | `/api/v1/auth/login`, `/api/v1/auth/logout`                                      |                                                                    |
+| POST               | `/api/v1/contact`                                                                | 202 on success (also for silently filed spam)                      |
+| GET                | `/api/v1/health`                                                                 |                                                                    |
+| GET                | `/media/<key>`                                                                   | Public files only, immutable cache                                 |
+
+Differences from the design above: pagination is offset-based (`page`), not
+cursor-based; preview is an owner-only page (`/admin/preview/:collection/:id`)
+rather than a preview token; search is the server-rendered `/search` page
+(rate-limited) rather than a JSON endpoint; the journal "load more" endpoint was
+replaced by page links; there are no TOTP endpoints yet.

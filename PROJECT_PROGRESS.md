@@ -1,116 +1,93 @@
 # Project progress
 
-Last updated: 2026-11-01
+Last updated: 2026-11-01 · Version 0.2.0
 
 ## Status
 
-| Phase | Name                            | Status                         |
-| ----- | ------------------------------- | ------------------------------ |
-| 1     | Repository inspection           | ✅ Done (2026-11-01)           |
-| 2     | System design                   | ✅ Done (2026-11-01), approved |
-| 3     | Foundation and design system    | ✅ Done (2026-11-01)           |
-| 4     | Authentication and admin shell  | Not started                    |
-| 5     | Content vertical slices         | Not started                    |
-| 6     | Media                           | Not started                    |
-| 7     | Search, SEO and discovery       | Not started                    |
-| 8     | Security and performance review | Not started                    |
-| 9     | Testing and quality             | Not started                    |
-| 10    | Deployment                      | Not started                    |
+| Phase | Name                            | Status                                                        |
+| ----- | ------------------------------- | ------------------------------------------------------------- |
+| 1     | Repository inspection           | ✅ Done                                                       |
+| 2     | System design                   | ✅ Done                                                       |
+| 3     | Foundation and design system    | ✅ Done                                                       |
+| 4     | Authentication and admin shell  | ✅ Done                                                       |
+| 5     | Content (all sections)          | ✅ Done                                                       |
+| 6     | Media                           | ✅ Done (local-disk storage)                                  |
+| 7     | Search, SEO and discovery       | ✅ Done                                                       |
+| 8     | Security and performance review | 🟡 Security tested; Lighthouse / Core Web Vitals not measured |
+| 9     | Testing and quality             | ✅ Done                                                       |
+| 10    | Deployment                      | 🟡 Prepared and smoke-tested in CI; **not deployed**          |
 
-Phase order and exit criteria: [docs/ROADMAP.md](docs/ROADMAP.md).
+Phase order and exit criteria: [docs/ROADMAP.md](docs/ROADMAP.md). Release
+notes: [CHANGELOG.md](CHANGELOG.md).
 
-## Phase 1 — Repository inspection
+## What exists
 
-- The working folder `Desktop\cc` is **DevPulse** (API monitoring platform,
-  `Ramssmb/DevPulse`), not a personal site. It was left untouched; DevPulse will
-  be a featured project on this site.
-- This repository lives at `C:\dev\personal-site`, outside OneDrive, and is
-  pushed to `github.com/Ramssmb/Ram-s-smb-personal-digital-universe-`.
+**Public pages:** home, about, education, skills, projects + project pages,
+experience, achievements and certifications, journal + entry pages + monthly
+archive + RSS, resources, links, contact, search, 404/error pages, sitemap,
+robots.txt. All read from the database; nothing personal is hard-coded.
 
-## Phase 2 — System design
+**Dashboard (`/admin`):** sign-in, overview, profile, about sections,
+education, skills, projects, experience, certifications, achievements,
+journal, resources, links, categories, tags, media library, messages, settings
+and per-page SEO, account (password change, sessions), component gallery.
 
-`ARCHITECTURE.md` and `docs/*`: architecture decisions D1–D13, schema, REST API,
-auth and security controls, design system, roadmap.
+**Content operations:** create, edit, delete (with confirmation), draft,
+publish, unpublish, archive, public/private, featured, manual ordering,
+preview of unpublished content, search and status filters, pagination,
+optimistic-concurrency protection, unsaved-change warning, audit log.
 
-## Phase 3 — Foundation and design system
+**Starter data (`npm run db:seed`):** categories from the brief, nine empty
+draft About sections, one draft education entry (B.Tech., Computer Science and
+Engineering, Dr. B. R. Ambedkar National Institute of Technology Jalandhar),
+and the confirmed interests. No year of study, grades or other unconfirmed
+facts.
 
-**Built**
+## Test results (2026-11-01, run locally on PostgreSQL 17)
 
-- Next.js 16.4 + React 19.3 + TypeScript 6 (strict, `noUncheckedIndexedAccess`),
-  typed routes, standalone output, ESLint, Prettier.
-- Environment validation (`src/server/env.ts`): lazy, lists invalid variable
-  names without their values.
-- Structured JSON logging (pino) with redaction of passwords, tokens, cookies
-  and bodies.
-- API conventions: `apiHandler` wrapper (request id, one log line per request,
-  documented error shape, `no-store`), JSON 404 for unknown `/api` paths,
-  `/api/v1/health`.
-- Security headers: nonce-based CSP per request (`src/proxy.ts`), nosniff,
-  frame denial, referrer and permissions policies, COOP, HSTS in production,
-  no `X-Powered-By`.
-- Database: Drizzle schema, first migration (all 12 shared enums and
-  `site_settings`), migration script, Docker Compose PostgreSQL 17, two roles
-  (`site_owner` owns the schema, `site_app` can only read and write rows).
-- Design system: color tokens for light/dark (OS-driven or forced by a
-  cookie, no flash), type scale, radius, motion, reduced-motion support; Inter
-  and JetBrains Mono self-hosted via `next/font`.
-- Components: Button, IconButton, ButtonLink, TextLink, ExternalLink (rejects
-  unsafe URLs), Field, Input, Textarea, Select, Checkbox, Switch, Badge, Tag,
-  Card, EmptyState, Skeleton, Alert, Dialog, ConfirmDialog, Container,
-  PageHeader, Section; site header, desktop and mobile navigation, footer, skip
-  link, theme toggle.
-- Pages: home (honest empty state), 404, error, global error, and the
-  component gallery `/admin/design` (404 unless `DESIGN_GALLERY=1`; noindex).
-- Tests: 60 unit tests; integration tests for migrations, constraints, role
-  privileges, settings service and health; Playwright end-to-end tests at
-  phone/tablet/desktop with axe (WCAG 2.2 AA) in both themes, CSP nonce checks,
-  theme persistence, skip link, 404s and the confirm dialog.
-- CI (`.github/workflows/ci.yml`): format, lint, typecheck, unit tests,
-  schema-vs-migration drift check, integration tests on PostgreSQL 17, build,
-  end-to-end tests, dependency audit.
+| Suite                             | Result                         | Covers                                                                                                                                                                               |
+| --------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Unit (Vitest)                     | **103 passed**                 | Config validation, field schemas, unsafe URLs, impossible dates, Markdown XSS sanitizing, file signatures, client-IP parsing, form tokens, components                                |
+| Integration (Vitest)              | **105 passed**                 | Schema constraints, least-privilege DB role, login/lockout/sessions/password change, 401 + CSRF 403 on all 13 admin route files, content lifecycle for every section, media, contact |
+| End-to-end (Playwright)           | **75 passed** (twice in a row) | Owner workflows through the UI; 13 public pages × phone/tablet/desktop × light/dark with axe (WCAG 2.2 AA); navigation, filters, CSP, SEO endpoints                                  |
+| Lint / typecheck / format / build | Clean                          |                                                                                                                                                                                      |
 
-**Decisions**
+A deliberate mutation check (removing the "published" condition from the
+visibility rule) made the content tests fail, confirming they detect leaks.
 
-- D10 revised: pages render per request (needed for the CSP nonce and the
-  server-read theme cookie); content will be cached at the data layer.
-- postgres.js pinned to 3.4.9 (4.0.0 was 3 days old); TypeScript 6.0.3 rather
-  than 7 (Next.js type-checking relies on the TypeScript JS API).
-- Dependency audit policy: production dependencies must be clean (they are);
-  two development-only findings are documented as accepted
-  (docs/AUTH_AND_SECURITY.md §14).
-- Components not yet needed (Tabs, Combobox, Toast, Markdown editor, command
-  palette, ...) are built in the phase that first uses them, so nothing is
-  unused or untested.
+The local database for these runs was a temporary portable PostgreSQL 17,
+because Docker cannot run on this machine without WSL. CI runs every suite
+against PostgreSQL 17 in Docker, plus a production-stack smoke test.
 
-**Verification (2026-11-01)**
+## Known limitations
 
-- Local: lint, typecheck, 60 unit tests, production build, 8 integration tests
-  and 45 end-to-end tests (15 scenarios × phone, tablet, desktop). The database
-  tests ran on a temporary portable PostgreSQL 17, because Docker cannot run on
-  this machine yet (no WSL).
-- The first CI run failed one end-to-end check (an ARIA attribute on the
-  gallery's skeleton example). It was reproduced locally, fixed in `d2e24b0`, and
-  the axe helper now names the offending elements.
-- Manual check in a browser: light and dark themes, component gallery, no
-  console errors or CSP violations.
+| Limitation                                   | Impact                                                                 | Follow-up                                                                 |
+| -------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Not deployed                                 | No public URL yet                                                      | Needs a server, domain and secrets from the owner (docs/DEPLOYMENT.md)    |
+| No two-factor authentication                 | Account protected by password, rate limits and revocable sessions only | Add TOTP                                                                  |
+| No email notification for contact messages   | Messages are only visible in the dashboard inbox                       | Add SMTP (choose provider)                                                |
+| Media stored on local disk only              | Managed/serverless hosting not supported yet                           | Add S3/R2 storage adapter                                                 |
+| No error-monitoring service                  | Errors are only in structured logs                                     | Add Sentry or GlitchTip                                                   |
+| Performance budgets not measured             | LCP/CLS/INP unverified (pages render per request)                      | Run Lighthouse on the deployed site; add a data cache if needed           |
+| Rate limits without a proxy share one bucket | Only matters in local development                                      | In production Caddy supplies the client IP (`TRUST_PROXY_HOPS=1`)         |
+| Two development-only audit findings          | None in production dependencies                                        | Re-check on ESLint / drizzle-kit upgrades (docs/AUTH_AND_SECURITY.md §14) |
+| No rich-text editor or command palette       | Markdown fields are plain text areas                                   | Optional polish                                                           |
 
-## Open decisions
+## Actions needed from the owner
 
-| Decision                                                      | Needed by                                      |
-| ------------------------------------------------------------- | ---------------------------------------------- |
-| Enable WSL 2 so Docker works locally (owner action)           | Phase 4 (local database work)                  |
-| Hosting: VPS (Docker + Caddy) or managed (Vercel + Neon + R2) | Phase 10 (storage adapter supports both)       |
-| Display name and identity details                             | Phase 5.1 (content stays draft until provided) |
-| Whether to draft content from an existing resume              | Phase 5                                        |
-| Domain name                                                   | Phase 10                                       |
+1. **Content:** sign in and fill in Profile (name, headline, bio, photo), the
+   About sections, education years and status, skills with honest statuses,
+   projects, experience, certificates and links. Publish each when ready.
+2. **Enable WSL 2** (`wsl --install` as administrator, then restart) so Docker
+   Desktop can run the local database (`docker compose up -d db`).
+3. **Deployment:** choose a VPS provider and a domain, point DNS at the server,
+   fill in `.env.production`, and follow docs/DEPLOYMENT.md.
+4. **Decide later:** SMTP provider (for message emails), whether to add 2FA.
 
-## Known issues
+## History
 
-- `docker compose up -d db` does not work on this machine until WSL 2 is
-  enabled (see above).
-- `/admin/design` is protected only by the `DESIGN_GALLERY` flag until Phase 4
-  adds `requireAdmin`. It contains no data.
-
-## Next action
-
-Phase 4: authentication and the admin shell.
+- Phase 1 found that `Desktop\cc` is DevPulse; this repository was created at
+  `C:\dev\personal-site` (outside OneDrive) and pushed to
+  `github.com/Ramssmb/Ram-s-smb-personal-digital-universe-`.
+- Phases 2–3 (design, foundation) — v0.1.0.
+- Phases 4–10 (application, tests, deployment preparation) — v0.2.0.

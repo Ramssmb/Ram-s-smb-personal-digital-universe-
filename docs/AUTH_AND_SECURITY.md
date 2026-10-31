@@ -163,3 +163,21 @@ Accepted development-only findings (reviewed 2026-11-01):
 | esbuild ≤ 0.24.2 dev-server CORS (moderate)     | `drizzle-kit` → `@esbuild-kit/*`                                                               | The advisory concerns esbuild's development _server_; drizzle-kit only uses esbuild to load its config file and never starts that server.                                                             |
 
 Re-check both whenever ESLint or drizzle-kit is upgraded.
+
+## 15. As built (v0.2.0)
+
+Implemented and covered by tests (`tests/integration/*`, `tests/e2e/*`):
+everything in §2–§13 except the items below.
+
+- **Not implemented yet:** TOTP two-factor authentication; email notification
+  of contact messages; optional Cloudflare Turnstile; error-monitoring service.
+- **Session cookie name:** `__Host-session` when `SITE_URL` is https, `session`
+  on plain-http development (browsers refuse `__Host-` cookies without HTTPS).
+- **Client IP:** taken from `X-Forwarded-For` only when `TRUST_PROXY_HOPS` > 0;
+  Caddy overwrites that header with the real address. Without a proxy every
+  client shares one rate-limit bucket.
+- **Login rate limits** count failed attempts only (5 per 15 minutes per
+  address, 10 per hour per account).
+- **Every admin API route** is discovered from the file system by
+  `tests/integration/authorization.test.ts`, which proves 401 without a session
+  and 403 for cross-site writes on every exported method.

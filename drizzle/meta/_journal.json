@@ -8,6 +8,13 @@
       "when": 1793474612941,
       "tag": "0000_initial_enums_and_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793477740470,
+      "tag": "0001_content_auth_media",
+      "breakpoints": true
     }
   ]
 }

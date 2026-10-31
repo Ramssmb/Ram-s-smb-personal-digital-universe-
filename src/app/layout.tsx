@@ -3,12 +3,9 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
-import { SiteFooter } from "@/components/site/site-footer";
-import { SiteHeader, SkipLink } from "@/components/site/site-header";
-import { primaryNav } from "@/config/navigation";
 import { THEME_COOKIE, parseThemePreference, themeAttribute } from "@/lib/theme";
+import { getIdentity } from "@/server/content/public";
 import { env } from "@/server/env";
-import { getSiteSettings } from "@/server/services/site-settings";
 
 import "./globals.css";
 
@@ -20,19 +17,33 @@ const jetbrains = JetBrains_Mono({
 });
 
 // Every page is rendered per request: the CSP nonce and the theme cookie differ
-// per visitor. Content is cached at the data layer instead (ARCHITECTURE.md D10).
-// This also keeps `next build` from querying the database.
+// per visitor (ARCHITECTURE.md D10). This also keeps `next build` from querying
+// the database.
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings();
+  const { settings, siteName, ogImage } = await getIdentity();
+  const name = siteName ?? "Personal site";
   return {
     metadataBase: new URL(env().SITE_URL),
-    title: {
-      default: settings.siteName ?? "Home",
-      template: settings.titleTemplate,
-    },
+    title: { default: name, template: settings.titleTemplate ?? "%s" },
     description: settings.defaultDescription ?? undefined,
+    applicationName: name,
+    openGraph: {
+      type: "website",
+      siteName: name,
+      ...(ogImage
+        ? {
+            images: [
+              { url: ogImage.src, width: ogImage.width, height: ogImage.height, alt: ogImage.alt },
+            ],
+          }
+        : {}),
+    },
+    twitter: { card: ogImage ? "summary_large_image" : "summary" },
+    alternates: {
+      types: { "application/rss+xml": [{ url: "/journal/feed.xml", title: `${name} — Journal` }] },
+    },
   };
 }
 
@@ -44,9 +55,10 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const [settings, cookieStore] = await Promise.all([getSiteSettings(), cookies()]);
+  const cookieStore = await cookies();
+  const { settings } = await getIdentity();
   const preference =
-    parseThemePreference(cookieStore.get(THEME_COOKIE)?.value) ?? settings.defaultTheme;
+    parseThemePreference(cookieStore.get(THEME_COOKIE)?.value) ?? settings.defaultTheme ?? "system";
 
   return (
     <html
@@ -54,14 +66,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       data-theme={themeAttribute(preference)}
       className={`${inter.variable} ${jetbrains.variable}`}
     >
-      <body className="flex min-h-dvh flex-col">
-        <SkipLink />
-        <SiteHeader siteName={settings.siteName} nav={primaryNav} />
-        <main id="main" className="flex flex-1 flex-col">
-          {children}
-        </main>
-        <SiteFooter siteName={settings.siteName} />
-      </body>
+      <body className="flex min-h-dvh flex-col">{children}</body>
     </html>
   );
 }

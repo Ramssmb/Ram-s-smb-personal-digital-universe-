@@ -23,11 +23,19 @@ export const serverEnvSchema = z.object({
     .transform((value) => value.replace(/\/+$/, "")),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
-  /** Development aid: serves the component gallery at /admin/design. Off by default. */
-  DESIGN_GALLERY: z
-    .enum(["0", "1"])
-    .default("0")
-    .transform((value) => value === "1"),
+  /**
+   * Server-side secret (≥ 32 random characters). Keys for IP hashing and form
+   * signing are derived from it. Rotating it logs nobody out but resets rate
+   * limit buckets. Generate with: node -e "console.log(crypto.randomBytes(32).toString('base64url'))"
+   */
+  APP_SECRET: z.string().min(32, "must be at least 32 characters"),
+  /** Directory for uploaded files. Public and private files live in separate subfolders. */
+  STORAGE_DIR: z.string().min(1).default("./storage"),
+  /**
+   * Number of trusted reverse proxies in front of the app (e.g. 1 behind Caddy).
+   * 0 ignores X-Forwarded-For entirely, so clients cannot spoof their address.
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

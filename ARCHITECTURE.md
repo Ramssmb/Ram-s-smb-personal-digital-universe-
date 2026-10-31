@@ -1,7 +1,7 @@
 # Architecture
 
-> Status: **Phase 2 — System design.** This document records the target design
-> and every significant decision. Sections are updated as phases are implemented.
+> Status: **Implemented (v0.2.0).** This document records the design and every
+> significant decision. §7 lists where the implementation refined the design.
 > Detailed designs live in [`docs/`](docs/).
 
 | Document                                               | Contents                                              |
@@ -226,9 +226,29 @@ documents every variable without real values.
 
 ## 6. Decisions log
 
-| #                | Date       | Decision                | Status                                          |
-| ---------------- | ---------- | ----------------------- | ----------------------------------------------- |
-| D1–D13           | 2026-11-01 | As above                | Approved by owner (Phase 1 review)              |
-| D10 revision     | 2026-11-01 | Per-request rendering   | Phase 3: required by the nonce CSP              |
-| Hosting          | —          | VPS vs managed          | Open                                            |
-| Display identity | —          | Name and content source | Open — content stays unpublished until provided |
+| #                | Date       | Decision                | Status                                                 |
+| ---------------- | ---------- | ----------------------- | ------------------------------------------------------ |
+| D1–D13           | 2026-11-01 | As above                | Approved by owner (Phase 1 review)                     |
+| D10 revision     | 2026-11-01 | Per-request rendering   | Phase 3: required by the nonce CSP                     |
+| Hosting          | 2026-11-01 | VPS + Docker + Caddy    | Supported target; managed hosting needs the S3 adapter |
+| Display identity | —          | Name and content source | Open — content stays unpublished until provided        |
+
+## 7. Implementation notes (v0.2.0)
+
+How the build differs from — or makes concrete — the Phase 2 design. Each
+point was decided during implementation; the docs in `docs/` carry matching notes.
+
+| Topic               | As built                                                                                                                                                                                                                                                                             | Why                                                                                                                                        |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Content model       | One definition per content type in `src/lib/content/collections.ts` drives the admin form, the API validation (Zod) and which columns a service may write. A generic service (`src/server/content/service.ts`) handles create/update/publish/archive/delete/reorder for all of them. | Twelve content types with identical workflows; one tested implementation instead of twelve.                                                |
+| Writes              | REST handlers under `/api/v1/admin/collections/:collection[/:id[/:action]]`, plus profile, settings, SEO, media, messages and account endpoints.                                                                                                                                     | As D4.                                                                                                                                     |
+| Reads               | Server components call `src/server/content/public.ts` directly; every query applies the visibility rule.                                                                                                                                                                             | As D4/D5.                                                                                                                                  |
+| Caching             | No data cache: pages render per request and read the database directly.                                                                                                                                                                                                              | Simplest correct behaviour (publishing is visible immediately); queries are indexed and small. Revisit with measurements if traffic grows. |
+| Preview             | `/admin/preview/:collection/:id`, owner-only, renders the same article components as the public pages.                                                                                                                                                                               | Simpler than signed preview tokens and needs no extra secret.                                                                              |
+| Pagination          | Offset (`?page=`) for public and admin lists.                                                                                                                                                                                                                                        | Lists are small; page links are shareable. Cursor pagination is unnecessary at this size.                                                  |
+| Education           | Coursework is a list on the education entry; academic milestones are achievements of kind "academic".                                                                                                                                                                                | Avoids two tables with no independent lifecycle.                                                                                           |
+| Categories          | One `categories` table with a `scope` (skill, project, resource).                                                                                                                                                                                                                    | One management screen for all groupings.                                                                                                   |
+| Media storage       | Local disk only (`STORAGE_DIR`, a Docker volume in production).                                                                                                                                                                                                                      | The VPS deployment is the supported target; the S3 adapter is a documented follow-up.                                                      |
+| 2FA (TOTP)          | Not implemented.                                                                                                                                                                                                                                                                     | Password + rate limits + revocable sessions ship first; TOTP is a documented follow-up.                                                    |
+| Email notifications | Not implemented; messages are stored and shown in the dashboard inbox.                                                                                                                                                                                                               | Avoids an SMTP dependency until the owner chooses a provider.                                                                              |
+| Hosting             | Single VPS with Docker Compose and Caddy (docs/DEPLOYMENT.md).                                                                                                                                                                                                                       | Resolves the open hosting decision in favour of the option the code fully supports.                                                        |

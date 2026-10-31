@@ -18,7 +18,7 @@ Existing environment analysed; new repository created outside OneDrive.
 
 `ARCHITECTURE.md` and `docs/*`.
 
-## Phase 3 — Foundation and design system
+## Phase 3 — Foundation and design system ✅
 
 - Scaffold Next.js + TypeScript (strict), ESLint, Prettier, Vitest, Playwright.
 - Docker Compose for local PostgreSQL 17 (dev and test databases).
@@ -29,7 +29,7 @@ Existing environment analysed; new repository created outside OneDrive.
 
 **Exit:** `npm run dev` serves an empty themed shell; CI green.
 
-## Phase 4 — Authentication and admin shell
+## Phase 4 — Authentication and admin shell ✅
 
 - `users`, `sessions`, `rate_limits`, `audit_log`; admin create/reset scripts.
 - Login, logout, session handling, `requireAdmin`, `Origin` check.
@@ -40,7 +40,7 @@ Existing environment analysed; new repository created outside OneDrive.
 
 **Exit:** owner can sign in; every admin route is proven protected.
 
-## Phase 5 — Content, one vertical slice at a time
+## Phase 5 — Content, one vertical slice at a time ✅
 
 Each slice: schema + migration, services with the visibility rule, admin API,
 admin list/form, public page(s), revalidation, tests.
@@ -59,29 +59,29 @@ admin list/form, public page(s), revalidation, tests.
 **Exit per slice:** create → preview → publish → visible publicly → unpublish →
 gone publicly, proven by an end-to-end test.
 
-## Phase 6 — Media
+## Phase 6 — Media ✅
 
 Storage adapters, uploads, image variants, EXIF stripping, private documents,
 media library UI, attachment pickers in every form.
 
-## Phase 7 — Search, SEO and discovery
+## Phase 7 — Search, SEO and discovery ✅
 
 Global search and command palette, sitemap, robots, canonical URLs, per-page
 metadata, SEO overrides UI, Open Graph images, JSON-LD (`Person`, `WebSite`,
 `Article` for journal entries, `CreativeWork` for projects), RSS feed.
 
-## Phase 8 — Security and performance review
+## Phase 8 — Security and performance review 🟡 (security tested; performance budgets not yet measured)
 
 Full review against `docs/AUTH_AND_SECURITY.md`; dependency audit; CSP
 verification; Lighthouse and Core Web Vitals budgets (LCP < 2.5 s, CLS < 0.1,
 INP < 200 ms on a mid-range phone profile); query plans for list pages.
 
-## Phase 9 — Testing and quality
+## Phase 9 — Testing and quality ✅
 
 Coverage gaps closed; responsive checks at 375, 768, 1024 and 1440 px in both
 themes; axe on every page; error-path tests; manual keyboard walkthrough.
 
-## Phase 10 — Deployment
+## Phase 10 — Deployment 🟡 (prepared and CI-tested; not yet deployed)
 
 Hosting decision (VPS or managed), production build, migrations in the release
 step, domain and HTTPS, backups (nightly `pg_dump` + media, off-site copy,

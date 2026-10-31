@@ -1,12 +1,20 @@
 import { sql } from "drizzle-orm";
-import { check, pgTable, smallint, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  jsonb,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 
+import { publishable, timestamps } from "./common";
 import { themePreference } from "./enums";
+import { mediaAssets } from "./media";
 
-/**
- * Single-row website settings. Columns for contact, SEO images and analytics are
- * added in the phases that use them (docs/DATABASE_DESIGN.md §4).
- */
+/** Single-row website settings (docs/DATABASE_DESIGN.md §4). */
 export const siteSettings = pgTable(
   "site_settings",
   {
@@ -15,6 +23,15 @@ export const siteSettings = pgTable(
     titleTemplate: text("title_template").notNull().default("%s"),
     defaultDescription: text("default_description"),
     defaultTheme: themePreference("default_theme").notNull().default("system"),
+    ogImageId: uuid().references(() => mediaAssets.id, { onDelete: "set null" }),
+    contactEnabled: boolean().notNull().default(true),
+    /** Shown publicly only when set. Kept separate from the account email on purpose. */
+    publicEmail: text(),
+    homeShowEducation: boolean().notNull().default(true),
+    homeShowProjects: boolean().notNull().default(true),
+    homeShowSkills: boolean().notNull().default(true),
+    homeShowJournal: boolean().notNull().default(true),
+    homeShowAchievements: boolean().notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -28,3 +45,36 @@ export const siteSettings = pgTable(
     check("site_settings_description_length", sql`char_length(${table.defaultDescription}) <= 300`),
   ],
 );
+
+/** Single-row public profile. Every field is optional; empty fields are not rendered. */
+export const profile = pgTable(
+  "profile",
+  {
+    id: smallint().primaryKey().default(1),
+    displayName: text(),
+    headline: text(),
+    shortBio: text(),
+    photoId: uuid().references(() => mediaAssets.id, { onDelete: "set null" }),
+    location: text(),
+    currentFocus: text(),
+    interests: jsonb().$type<string[]>().notNull().default([]),
+    availability: text(),
+    ...timestamps(),
+  },
+  (t) => [check("profile_singleton", sql`${t.id} = 1`)],
+);
+
+export const aboutSections = pgTable("about_sections", {
+  id: uuid().primaryKey().defaultRandom(),
+  title: text().notNull(),
+  bodyMd: text().notNull().default(""),
+  ...publishable(),
+});
+
+/** Optional title/description overrides for the fixed public pages. */
+export const seoPages = pgTable("seo_pages", {
+  key: text().primaryKey(),
+  title: text(),
+  description: text(),
+  ...timestamps(),
+});

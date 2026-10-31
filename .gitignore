@@ -17,6 +17,7 @@ test-results/
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # local media storage
 storage/
@@ -27,3 +28,7 @@ Thumbs.db
 desktop.ini
 .vscode/*
 !.vscode/extensions.json
+
+# Playwright
+playwright/.auth/
+.e2e-storage/

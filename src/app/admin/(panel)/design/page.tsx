@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { FolderOpen, Plus } from "lucide-react";
 
 import { Button, ButtonLink, IconButton } from "@/components/ui/button";
 import { Alert, Badge, Card, EmptyState, Skeleton, Tag } from "@/components/ui/display";
 import { Container, PageHeader, Section } from "@/components/ui/layout";
 import { ExternalLink, TextLink } from "@/components/ui/text-link";
-import { env } from "@/server/env";
+import { requireAdminPage } from "@/server/auth/guard";
 
 import { InteractiveDemos } from "./interactive-demos";
 
@@ -17,11 +16,10 @@ export const metadata: Metadata = {
 
 /**
  * Living reference for every component in both themes (docs/DESIGN_SYSTEM.md).
- * A development aid: it returns 404 unless DESIGN_GALLERY=1. It shows no data.
- * From Phase 4 it also requires the admin session.
+ * Only the signed-in owner can open it. It shows no data.
  */
-export default function DesignSystemPage() {
-  if (!env().DESIGN_GALLERY) notFound();
+export default async function DesignSystemPage() {
+  await requireAdminPage();
 
   return (
     <Container>

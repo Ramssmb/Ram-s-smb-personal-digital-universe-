@@ -13,12 +13,15 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Throwaway credentials for the CI database container only.
+  # Throwaway values for the CI database container only.
   SITE_URL: http://localhost:3100
+  APP_SECRET: ci-only-secret-ci-only-secret-0123456789
   DATABASE_URL: postgres://site_app:site_app_dev@localhost:5432/personal_site
   MIGRATION_DATABASE_URL: postgres://site_owner:site_owner_dev@localhost:5432/personal_site
   TEST_DATABASE_URL: postgres://site_app:site_app_dev@localhost:5432/personal_site_test
   TEST_MIGRATION_DATABASE_URL: postgres://site_owner:site_owner_dev@localhost:5432/personal_site_test
+  E2E_DATABASE_URL: postgres://site_app:site_app_dev@localhost:5432/personal_site_e2e
+  E2E_MIGRATION_DATABASE_URL: postgres://site_owner:site_owner_dev@localhost:5432/personal_site_e2e
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
@@ -72,6 +75,13 @@ jobs:
           PGUSER: postgres
           PGPASSWORD: postgres_ci_only
       - run: npm run db:migrate
+      - name: Seed runs and is repeatable
+        run: npm run db:seed && npm run db:seed
+      - name: Owner account script (non-interactive)
+        run: npm run admin:create
+        env:
+          ADMIN_EMAIL: ci-owner@example.test
+          ADMIN_PASSWORD: a long ci only passphrase 2026
       - run: npm run test:integration
 
   e2e:
@@ -100,7 +110,6 @@ jobs:
           PGHOST: localhost
           PGUSER: postgres
           PGPASSWORD: postgres_ci_only
-      - run: npm run db:migrate
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
@@ -110,6 +119,47 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  docker:
+    name: Production stack smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Write a throwaway production environment
+        run: |
+          cat > .env.production <<EOF
+          DOMAIN=localhost
+          POSTGRES_SUPERUSER_PASSWORD=$(openssl rand -hex 16)
+          DB_OWNER_PASSWORD=$(openssl rand -hex 16)
+          DB_APP_PASSWORD=$(openssl rand -hex 16)
+          APP_SECRET=$(openssl rand -hex 32)
+          EOF
+      - name: Build and start
+        run: docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+      - name: HTTPS health check through Caddy
+        run: |
+          for i in $(seq 1 90); do
+            if curl -fsk --resolve localhost:443:127.0.0.1 https://localhost/api/v1/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose -f docker-compose.prod.yml --env-file .env.production logs
+          exit 1
+      - name: Public pages and security headers
+        run: |
+          curl -fsk https://localhost/ -o /dev/null
+          curl -sk -D - https://localhost/ -o /dev/null | grep -i "^content-security-policy: .*nonce-"
+          curl -sk -D - https://localhost/ -o /dev/null | grep -i "^strict-transport-security"
+          test "$(curl -sk -o /dev/null -w '%{http_code}' https://localhost/api/v1/admin/collections/projects)" = "401"
+      - name: Database is not reachable from outside
+        run: "! nc -z -w 2 127.0.0.1 5432"
+      - name: Owner account can be created with the tools image
+        run: docker compose -f docker-compose.prod.yml --env-file .env.production run --rm -e ADMIN_EMAIL=owner@example.test -e ADMIN_PASSWORD="a long smoke test passphrase" tools npm run admin:create
+      - name: Logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.prod.yml --env-file .env.production logs
+      - name: Stop
+        if: always()
+        run: docker compose -f docker-compose.prod.yml --env-file .env.production down -v
 
   audit:
     name: Dependency audit
