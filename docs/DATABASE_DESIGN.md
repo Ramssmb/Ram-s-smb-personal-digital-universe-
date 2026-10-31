@@ -24,14 +24,14 @@
 Every content table (profile sections, education, skills, projects, experiences,
 achievements, certifications, journal entries, resources, links) has:
 
-| Column | Type | Notes |
-|--------|------|-------|
-| `status` | enum `content_status` (`draft`, `published`, `archived`) | Default `draft` |
-| `visibility` | enum `visibility` (`public`, `private`) | Default `public` |
-| `is_featured` | boolean | Default `false`; drives the home page |
-| `sort_order` | integer | Manual ordering within a list; default `0` |
-| `published_at` | timestamptz null | Set the first time the row is published; `CHECK (status <> 'published' OR published_at IS NOT NULL)` |
-| `created_at`, `updated_at` | timestamptz | |
+| Column                     | Type                                                     | Notes                                                                                                |
+| -------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `status`                   | enum `content_status` (`draft`, `published`, `archived`) | Default `draft`                                                                                      |
+| `visibility`               | enum `visibility` (`public`, `private`)                  | Default `public`                                                                                     |
+| `is_featured`              | boolean                                                  | Default `false`; drives the home page                                                                |
+| `sort_order`               | integer                                                  | Manual ordering within a list; default `0`                                                           |
+| `published_at`             | timestamptz null                                         | Set the first time the row is published; `CHECK (status <> 'published' OR published_at IS NOT NULL)` |
+| `created_at`, `updated_at` | timestamptz                                              |                                                                                                      |
 
 **Visitor visibility rule** (implemented once, in the service layer, and unit-tested):
 
@@ -49,77 +49,85 @@ Each content table has a partial index for the public listing query, e.g.
 
 ## 3. Enumerations
 
-| Enum | Values |
-|------|--------|
-| `content_status` | `draft`, `published`, `archived` |
-| `visibility` | `public`, `private` |
-| `user_role` | `owner`, `editor` |
-| `learning_status` | `planned`, `learning`, `practicing`, `comfortable` |
+| Enum               | Values                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| `content_status`   | `draft`, `published`, `archived`                                                           |
+| `visibility`       | `public`, `private`                                                                        |
+| `user_role`        | `owner`, `editor`                                                                          |
+| `learning_status`  | `planned`, `learning`, `practicing`, `comfortable`                                         |
 | `experience_level` | `beginner`, `intermediate`, `advanced` (nullable on skills — never assigned automatically) |
-| `project_status` | `planned`, `in_progress`, `completed`, `maintained`, `paused`, `archived` |
-| `experience_kind` | `internship`, `job`, `freelance`, `open_source`, `volunteer`, `team`, `responsibility` |
-| `credential_kind` | `certification`, `course` |
-| `achievement_kind` | `award`, `competition`, `hackathon`, `academic`, `technical`, `milestone` |
-| `media_access` | `public`, `private` |
-| `message_status` | `new`, `read`, `archived`, `spam` |
+| `project_status`   | `planned`, `in_progress`, `completed`, `maintained`, `paused`, `archived`                  |
+| `experience_kind`  | `internship`, `job`, `freelance`, `open_source`, `volunteer`, `team`, `responsibility`     |
+| `credential_kind`  | `certification`, `course`                                                                  |
+| `achievement_kind` | `award`, `competition`, `hackathon`, `academic`, `technical`, `milestone`                  |
+| `media_access`     | `public`, `private`                                                                        |
+| `message_status`   | `new`, `read`, `archived`, `spam`                                                          |
 
 ## 4. Identity and system tables
 
 ### `users`
-| Column | Type | Notes |
-|--------|------|-------|
-| `email` | citext unique | Sign-in identifier |
-| `password_hash` | text | Argon2id PHC string |
-| `role` | `user_role` | `owner` for the single admin; `editor` reserved for later |
-| `totp_secret_encrypted` | bytea null | AES-256-GCM encrypted with a key from the environment |
-| `totp_enabled_at` | timestamptz null | |
-| `password_changed_at` | timestamptz | Sessions created before this are invalid |
-| `last_login_at` | timestamptz null | |
+
+| Column                  | Type             | Notes                                                     |
+| ----------------------- | ---------------- | --------------------------------------------------------- |
+| `email`                 | citext unique    | Sign-in identifier                                        |
+| `password_hash`         | text             | Argon2id PHC string                                       |
+| `role`                  | `user_role`      | `owner` for the single admin; `editor` reserved for later |
+| `totp_secret_encrypted` | bytea null       | AES-256-GCM encrypted with a key from the environment     |
+| `totp_enabled_at`       | timestamptz null |                                                           |
+| `password_changed_at`   | timestamptz      | Sessions created before this are invalid                  |
+| `last_login_at`         | timestamptz null |                                                           |
 
 ### `sessions`
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | text PK | SHA-256 hex of the cookie token (the token itself is never stored) |
-| `user_id` | uuid FK → users, cascade | |
-| `expires_at` | timestamptz | Sliding 7 days, capped at 30 days from `created_at` |
-| `mfa_verified` | boolean | `false` until the TOTP step passes, when 2FA is on |
-| `ip_hash`, `user_agent` | text | For the "active sessions" list; IP stored as a keyed hash |
-| `revoked_at` | timestamptz null | |
+
+| Column                  | Type                     | Notes                                                              |
+| ----------------------- | ------------------------ | ------------------------------------------------------------------ |
+| `id`                    | text PK                  | SHA-256 hex of the cookie token (the token itself is never stored) |
+| `user_id`               | uuid FK → users, cascade |                                                                    |
+| `expires_at`            | timestamptz              | Sliding 7 days, capped at 30 days from `created_at`                |
+| `mfa_verified`          | boolean                  | `false` until the TOTP step passes, when 2FA is on                 |
+| `ip_hash`, `user_agent` | text                     | For the "active sessions" list; IP stored as a keyed hash          |
+| `revoked_at`            | timestamptz null         |                                                                    |
 
 Index: `(user_id)`, `(expires_at)` for cleanup.
 
 ### `rate_limits`
+
 `key text`, `window_start timestamptz`, `count int`; PK `(key, window_start)`.
 Old windows deleted opportunistically.
 
 ### `audit_log`
+
 `user_id`, `action` (`create`, `update`, `publish`, `unpublish`, `delete`,
 `login`, `login_failed`, `password_change`, …), `entity_type`, `entity_id`,
 `summary jsonb` (changed field names only, never secrets), `ip_hash`, `created_at`.
 
 ### `site_settings` (single row, `id = 1` enforced by `CHECK`)
+
 Site name, base URL, default meta title template and description, default Open
 Graph image (FK media), default theme, contact form enabled, contact recipient
 email (server-only, never rendered), public email shown (nullable, explicit
 opt-in), analytics toggle.
 
 ### `seo_overrides`
-| Column | Notes |
-|--------|-------|
-| `route_key` | text unique — e.g. `home`, `projects`, `project:<uuid>`, `journal:<uuid>` |
-| `title`, `description` | nullable; fall back to generated values |
-| `og_image_id` | FK media, nullable |
-| `noindex` | boolean |
+
+| Column                 | Notes                                                                     |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `route_key`            | text unique — e.g. `home`, `projects`, `project:<uuid>`, `journal:<uuid>` |
+| `title`, `description` | nullable; fall back to generated values                                   |
+| `og_image_id`          | FK media, nullable                                                        |
+| `noindex`              | boolean                                                                   |
 
 ## 5. Profile
 
 ### `profile` (single row)
+
 `display_name`, `headline`, `short_bio` (≤ 300 chars), `photo_id` (FK media),
 `location` (nullable, opt-in), `current_focus` (text), `current_interests`
 (text[]), `availability_note` (nullable). Every field nullable: an empty field is
 simply not rendered. Publishing state is per section, below.
 
 ### `about_sections`
+
 `key` (unique slug, e.g. `background`, `learning-philosophy`), `title`,
 `body_md`, plus the shared publishable columns. Seeded **empty and draft** with the
 nine sections from the brief (introduction, background, academic journey,
@@ -129,6 +137,7 @@ aspirations, areas of exploration).
 ## 6. Education
 
 ### `education`
+
 `institution`, `institution_url`, `degree`, `branch`, `start_year`, `end_year`
 (nullable = expected/ongoing), `current_year_of_study` (smallint null),
 `current_semester` (smallint null), `grade_note` (nullable, free text — never
@@ -139,29 +148,33 @@ Science and Engineering, Dr. B. R. Ambedkar National Institute of Technology
 Jalandhar, year of study 2. Start/end years left empty until confirmed.
 
 ### `courses`
+
 `education_id` FK (cascade), `name`, `code` (nullable), `semester` (nullable),
 `notes_md`, shared columns.
 
 ### `academic_milestones`
+
 `education_id` FK, `title`, `date`, `description_md`, shared columns.
 
 ## 7. Skills
 
 ### `skill_categories`
+
 `name`, `slug` unique, `description`, `sort_order`. Seeded with the 14 categories
 from the brief.
 
 ### `skills`
-| Column | Notes |
-|--------|-------|
-| `category_id` | FK → skill_categories, restrict |
-| `name`, `slug` | `slug` unique |
-| `description_md` | |
-| `learning_status` | `learning_status`, default `learning` |
+
+| Column             | Notes                                                          |
+| ------------------ | -------------------------------------------------------------- |
+| `category_id`      | FK → skill_categories, restrict                                |
+| `name`, `slug`     | `slug` unique                                                  |
+| `description_md`   |                                                                |
+| `learning_status`  | `learning_status`, default `learning`                          |
 | `experience_level` | `experience_level` **null by default**; only the owner sets it |
-| `last_reviewed_on` | date — shown publicly as "last updated" |
-| `icon_key` | nullable; references a bundled icon set, not an uploaded file |
-| shared columns | |
+| `last_reviewed_on` | date — shown publicly as "last updated"                        |
+| `icon_key`         | nullable; references a bundled icon set, not an uploaded file  |
+| shared columns     |                                                                |
 
 Projects, journal entries, experiences and certifications refer to skills as
 their "technologies", so one technology has one name everywhere and each skill
@@ -170,22 +183,24 @@ page can list related projects and certificates automatically.
 ## 8. Projects
 
 ### `project_categories`
+
 `name`, `slug`, `sort_order`.
 
 ### `projects`
-| Column | Notes |
-|--------|-------|
-| `slug` | unique, URL `/projects/<slug>` |
-| `title`, `summary` (≤ 280) | |
-| `category_id` | FK, nullable |
-| `problem_md`, `solution_md`, `contribution_md`, `architecture_md` | |
-| `features` | `jsonb` array of `{title, description}`, validated by Zod |
-| `repo_url`, `live_url` | nullable, validated URLs |
-| `project_status` | `project_status` |
-| `started_on`, `completed_on` | date; `CHECK (completed_on IS NULL OR completed_on >= started_on)` |
-| `cover_media_id` | FK media, nullable |
-| `search` | generated `tsvector` (title A, summary B, write-ups C) + GIN index |
-| shared columns | |
+
+| Column                                                            | Notes                                                              |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------ |
+| `slug`                                                            | unique, URL `/projects/<slug>`                                     |
+| `title`, `summary` (≤ 280)                                        |                                                                    |
+| `category_id`                                                     | FK, nullable                                                       |
+| `problem_md`, `solution_md`, `contribution_md`, `architecture_md` |                                                                    |
+| `features`                                                        | `jsonb` array of `{title, description}`, validated by Zod          |
+| `repo_url`, `live_url`                                            | nullable, validated URLs                                           |
+| `project_status`                                                  | `project_status`                                                   |
+| `started_on`, `completed_on`                                      | date; `CHECK (completed_on IS NULL OR completed_on >= started_on)` |
+| `cover_media_id`                                                  | FK media, nullable                                                 |
+| `search`                                                          | generated `tsvector` (title A, summary B, write-ups C) + GIN index |
+| shared columns                                                    |                                                                    |
 
 Join tables: `project_skills (project_id, skill_id)`,
 `project_media (project_id, media_id, caption, alt_override, sort_order)`,
@@ -194,6 +209,7 @@ Join tables: `project_skills (project_id, skill_id)`,
 ## 9. Experience
 
 ### `experiences`
+
 `kind` (`experience_kind`), `organization`, `organization_url`, `role`,
 `location` (nullable), `employment_type` (nullable), `started_on`, `ended_on`
 (null = current), `summary_md`, `responsibilities` (`jsonb` string array),
@@ -203,6 +219,7 @@ Join: `experience_skills`.
 ## 10. Credentials
 
 ### `certifications`
+
 `kind` (`certification` | `course`), `title`, `issuer`, `issuer_url`,
 `issued_on`, `expires_on` (nullable), `credential_id` (nullable),
 `verification_url` (nullable), `certificate_media_id` (FK media, nullable — may
@@ -210,6 +227,7 @@ point to a **private** file), `description_md`, `search`, shared columns.
 Join: `certification_skills`.
 
 ### `achievements`
+
 `kind` (`achievement_kind`), `title`, `organization`, `achieved_on`,
 `description_md`, `media_id` (nullable), `url` (nullable), `search`, shared
 columns. Join: `achievement_skills`.
@@ -217,14 +235,15 @@ columns. Join: `achievement_skills`.
 ## 11. Journal
 
 ### `journal_entries`
-| Column | Notes |
-|--------|-------|
-| `slug` | unique; default `<entry_date>-<title-slug>` |
-| `entry_date` | date; indexed with `published_at` for the timeline |
-| `title`, `summary` (≤ 300) | |
+
+| Column                                                              | Notes                                                               |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `slug`                                                              | unique; default `<entry_date>-<title-slug>`                         |
+| `entry_date`                                                        | date; indexed with `published_at` for the timeline                  |
+| `title`, `summary` (≤ 300)                                          |                                                                     |
 | `learned_md`, `worked_on_md`, `built_md`, `problems_md`, `notes_md` | all optional — a quick entry needs only date, title and one section |
-| `search` | generated `tsvector` + GIN |
-| shared columns | |
+| `search`                                                            | generated `tsvector` + GIN                                          |
+| shared columns                                                      |                                                                     |
 
 Join tables: `journal_skills` (technologies), `journal_tags`,
 `journal_links (entry_id, kind ['resource','github','other'], label, url, sort_order)`,
@@ -238,12 +257,14 @@ over the public partial index.
 ### `resource_categories` — seeded with the 13 categories from the brief.
 
 ### `resources`
+
 `title`, `description`, `url`, `category_id`, `notes_md`, `added_on` (date,
 default today), `search`, shared columns. Join: `resource_tags`.
 
 ### `link_categories` — e.g. Profiles, Coding, Social, Writing, Repositories, Other.
 
 ### `links`
+
 `label`, `url`, `description`, `category_id`, `icon_key` (bundled icon set),
 `rel_me` (boolean — adds `rel="me"` for identity verification), shared columns.
 Links that use `mailto:` are allowed only here, and only to the address in
@@ -259,6 +280,7 @@ cannot enforce its foreign keys.
 ## 14. Contact
 
 ### `contact_messages`
+
 `name`, `email`, `subject`, `body` (≤ 5,000), `status` (`message_status`),
 `ip_hash` (keyed hash — the raw IP is never stored), `user_agent`,
 `spam_signals jsonb` (honeypot hit, submitted too fast, rate-limited),
@@ -267,18 +289,19 @@ cannot enforce its foreign keys.
 ## 15. Media
 
 ### `media_assets`
-| Column | Notes |
-|--------|-------|
-| `storage_key` | random, e.g. `2026/11/<uuid>`; unique |
-| `access` | `media_access`; private files are never written to the public path/bucket |
-| `kind` | `image` or `document` |
-| `mime_type` | detected from file content |
-| `byte_size`, `sha256` | sha256 detects duplicate uploads |
-| `width`, `height` | images only |
-| `variants` | `jsonb`: `[{format, width, key, byte_size}]` |
-| `original_filename` | display only, never used as a path |
-| `alt_text` | required before an image can be attached to published content |
-| `uploaded_by` | FK users |
+
+| Column                | Notes                                                                     |
+| --------------------- | ------------------------------------------------------------------------- |
+| `storage_key`         | random, e.g. `2026/11/<uuid>`; unique                                     |
+| `access`              | `media_access`; private files are never written to the public path/bucket |
+| `kind`                | `image` or `document`                                                     |
+| `mime_type`           | detected from file content                                                |
+| `byte_size`, `sha256` | sha256 detects duplicate uploads                                          |
+| `width`, `height`     | images only                                                               |
+| `variants`            | `jsonb`: `[{format, width, key, byte_size}]`                              |
+| `original_filename`   | display only, never used as a path                                        |
+| `alt_text`            | required before an image can be attached to published content             |
+| `uploaded_by`         | FK users                                                                  |
 
 ## 16. Full-text search
 

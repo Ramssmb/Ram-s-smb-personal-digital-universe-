@@ -4,13 +4,13 @@
 > and every significant decision. Sections are updated as phases are implemented.
 > Detailed designs live in [`docs/`](docs/).
 
-| Document | Contents |
-|----------|----------|
-| [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md) | Tables, columns, constraints, indexes, search |
-| [docs/API_DESIGN.md](docs/API_DESIGN.md) | REST endpoints, conventions, errors, pagination |
+| Document                                               | Contents                                              |
+| ------------------------------------------------------ | ----------------------------------------------------- |
+| [docs/DATABASE_DESIGN.md](docs/DATABASE_DESIGN.md)     | Tables, columns, constraints, indexes, search         |
+| [docs/API_DESIGN.md](docs/API_DESIGN.md)               | REST endpoints, conventions, errors, pagination       |
 | [docs/AUTH_AND_SECURITY.md](docs/AUTH_AND_SECURITY.md) | Authentication, authorization, threat model, controls |
-| [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Tokens, typography, components, layout, themes |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Phases, milestones and exit criteria |
+| [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)         | Tokens, typography, components, layout, themes        |
+| [docs/ROADMAP.md](docs/ROADMAP.md)                     | Phases, milestones and exit criteria                  |
 
 ## 1. Product summary
 
@@ -168,10 +168,19 @@ milliseconds. No external search service.
 
 ### D10. Caching and revalidation
 
-Public pages are cached and **revalidated by tag when content changes**: publishing
-a project revalidates `projects`, `project:<slug>`, `home`, `sitemap` and
-`search`. Admin pages and API responses are never cached. This gives static-site
-speed with instant updates after publishing.
+**Revised in Phase 3.** Pages are **rendered per request**, and published content
+is **cached at the data layer, revalidated by tag when it changes**: publishing a
+project revalidates `projects`, `project:<slug>`, `home`, `sitemap` and `search`.
+Admin pages and API responses are never cached.
+
+Why not fully static pages: the nonce-based Content Security Policy (D6 and
+docs/AUTH_AND_SECURITY.md §5) needs a fresh nonce in every HTML response, and the
+theme cookie must be read on the server to avoid a flash of the wrong theme. A
+statically cached page cannot carry either. The alternative, `script-src
+'unsafe-inline'`, would remove most of the CSP's protection against XSS.
+Rendering a cached page per request costs a few milliseconds of server time,
+which is negligible at personal-site traffic; LCP is still met with compressed,
+streamed HTML. This is revisited in Phase 8 with measurements.
 
 ### D11. Rate limiting stored in PostgreSQL
 
@@ -187,11 +196,11 @@ component code. See [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md).
 
 ### D13. Testing
 
-| Layer | Tool | Runs against |
-|-------|------|--------------|
-| Unit | Vitest | Pure functions: validation, slugs, visibility rules, Markdown sanitizing |
-| Integration / API | Vitest | Route handlers and services against a real PostgreSQL test database |
-| End-to-end | Playwright | Built app; desktop, tablet and phone viewports; axe accessibility checks |
+| Layer             | Tool       | Runs against                                                             |
+| ----------------- | ---------- | ------------------------------------------------------------------------ |
+| Unit              | Vitest     | Pure functions: validation, slugs, visibility rules, Markdown sanitizing |
+| Integration / API | Vitest     | Route handlers and services against a real PostgreSQL test database      |
+| End-to-end        | Playwright | Built app; desktop, tablet and phone viewports; axe accessibility checks |
 
 CI runs typecheck, lint, unit, integration, build, end-to-end and a dependency
 audit on every push.
@@ -200,10 +209,10 @@ audit on every push.
 
 **Open decision** (the design supports both; to be chosen before Phase 10):
 
-| Option | Monthly cost | Pros | Cons |
-|--------|-------------|------|------|
-| **A. One VPS**: Docker Compose (Next.js standalone, PostgreSQL, Caddy) | ~US$5–6 + domain | Full control, mirrors the DevPulse production setup, local-disk media, one place to back up | Owner patches the OS and runs backups |
-| **B. Managed**: Vercel + Neon PostgreSQL + Cloudflare R2 | Free tiers possible + domain | No servers, automatic HTTPS and previews | Vercel Hobby is non-commercial; serverless needs pooled DB connections; media must use object storage; three vendors |
+| Option                                                                 | Monthly cost                 | Pros                                                                                        | Cons                                                                                                                 |
+| ---------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **A. One VPS**: Docker Compose (Next.js standalone, PostgreSQL, Caddy) | ~US$5–6 + domain             | Full control, mirrors the DevPulse production setup, local-disk media, one place to back up | Owner patches the OS and runs backups                                                                                |
+| **B. Managed**: Vercel + Neon PostgreSQL + Cloudflare R2               | Free tiers possible + domain | No servers, automatic HTTPS and previews                                                    | Vercel Hobby is non-commercial; serverless needs pooled DB connections; media must use object storage; three vendors |
 
 Both use the same code: the storage adapter and database URL come from the
 environment.
@@ -217,8 +226,9 @@ documents every variable without real values.
 
 ## 6. Decisions log
 
-| # | Date | Decision | Status |
-|---|------|----------|--------|
-| D1–D13 | 2026-11-01 | As above | Approved by owner (Phase 1 review) |
-| Hosting | — | VPS vs managed | Open |
-| Display identity | — | Name and content source | Open — content stays unpublished until provided |
+| #                | Date       | Decision                | Status                                          |
+| ---------------- | ---------- | ----------------------- | ----------------------------------------------- |
+| D1–D13           | 2026-11-01 | As above                | Approved by owner (Phase 1 review)              |
+| D10 revision     | 2026-11-01 | Per-request rendering   | Phase 3: required by the nonce CSP              |
+| Hosting          | —          | VPS vs managed          | Open                                            |
+| Display identity | —          | Name and content source | Open — content stays unpublished until provided |

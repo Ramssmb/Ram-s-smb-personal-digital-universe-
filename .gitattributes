@@ -1,0 +1,8 @@
+# Normalize line endings so Windows and Linux (CI, Docker) agree.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.avif binary
+*.pdf binary
+*.woff2 binary

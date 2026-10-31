@@ -5,14 +5,14 @@
 
 ## 1. Threat model (short)
 
-| Asset | Threat | Primary controls |
-|-------|--------|------------------|
-| Admin account | Password guessing, credential stuffing | Argon2id, per-IP + per-account rate limits, optional TOTP, no user enumeration |
-| Admin session | Theft via XSS, CSRF, fixation | `httpOnly` cookie, strict CSP, sanitized Markdown, `Origin` check, new token on login |
-| Unpublished / private content | Leakage through pages, API, search, sitemap, media URLs | One visibility rule in the service layer; private media served only via authenticated route; 404 for hidden items |
-| Contact recipient email, personal data | Scraping, accidental exposure | Recipient address server-only; public email strictly opt-in |
-| Server | Malicious uploads, SSRF, injection | Content-signature checks, re-encoding, parameterized queries, no server-side URL fetching |
-| Availability | Spam floods, expensive searches | Rate limits, request size limits, query limits |
+| Asset                                  | Threat                                                  | Primary controls                                                                                                  |
+| -------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Admin account                          | Password guessing, credential stuffing                  | Argon2id, per-IP + per-account rate limits, optional TOTP, no user enumeration                                    |
+| Admin session                          | Theft via XSS, CSRF, fixation                           | `httpOnly` cookie, strict CSP, sanitized Markdown, `Origin` check, new token on login                             |
+| Unpublished / private content          | Leakage through pages, API, search, sitemap, media URLs | One visibility rule in the service layer; private media served only via authenticated route; 404 for hidden items |
+| Contact recipient email, personal data | Scraping, accidental exposure                           | Recipient address server-only; public email strictly opt-in                                                       |
+| Server                                 | Malicious uploads, SSRF, injection                      | Content-signature checks, re-encoding, parameterized queries, no server-side URL fetching                         |
+| Availability                           | Spam floods, expensive searches                         | Rate limits, request size limits, query limits                                                                    |
 
 ## 2. Authentication
 
@@ -94,15 +94,15 @@ parameters are validated against allow-lists, never interpolated.
 
 ## 8. Uploads
 
-| Rule | Value |
-|------|-------|
-| Allowed types (by magic bytes) | JPEG, PNG, WebP, AVIF, PDF |
-| Rejected | SVG (can carry scripts), HTML, anything else |
-| Max size | Images 10 MB, PDFs 15 MB; request body capped before parsing |
-| Image handling | Decoded and re-encoded by `sharp` (removes EXIF/GPS and any appended payload); pixel limit 40 MP to stop decompression bombs |
-| PDF handling | Signature and structure checked; served with `Content-Disposition: attachment` unless the owner marks it viewable; `X-Content-Type-Options: nosniff` |
-| Names | Random storage key; the original filename is never part of a path |
-| Private files | Separate directory / bucket prefix with no public route; streamed only by `/admin/media/:id/file` after `requireAdmin` |
+| Rule                           | Value                                                                                                                                                |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Allowed types (by magic bytes) | JPEG, PNG, WebP, AVIF, PDF                                                                                                                           |
+| Rejected                       | SVG (can carry scripts), HTML, anything else                                                                                                         |
+| Max size                       | Images 10 MB, PDFs 15 MB; request body capped before parsing                                                                                         |
+| Image handling                 | Decoded and re-encoded by `sharp` (removes EXIF/GPS and any appended payload); pixel limit 40 MP to stop decompression bombs                         |
+| PDF handling                   | Signature and structure checked; served with `Content-Disposition: attachment` unless the owner marks it viewable; `X-Content-Type-Options: nosniff` |
+| Names                          | Random storage key; the original filename is never part of a path                                                                                    |
+| Private files                  | Separate directory / bucket prefix with no public route; streamed only by `/admin/media/:id/file` after `requireAdmin`                               |
 
 ## 9. Outbound links
 
@@ -146,3 +146,20 @@ monitoring with the same request id and scrubbed of those fields.
   (e.g. self-hosted Plausible/Umami) is preferred so no consent banner is needed.
 - Location and personal email appear only if the owner explicitly fills them in
   and publishes them.
+
+## 14. Dependency audit policy
+
+CI runs two audits on every push:
+
+- **Production dependencies** (`npm audit --omit=dev`): any finding fails the build.
+- **All dependencies**: fails only on critical findings; lower findings in
+  development tools are reviewed and recorded here.
+
+Accepted development-only findings (reviewed 2026-11-01):
+
+| Advisory                                        | Where                                                                                          | Why it is accepted                                                                                                                                                                                    |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GHSA-g3hv-75wg-m249 (minimatch ReDoS, moderate) | minimatch 3.1.5 inside `eslint-plugin-import`, `eslint-plugin-jsx-a11y`, `eslint-plugin-react` | No patched 3.x release exists. The linter only evaluates glob patterns written in this repository's config, never untrusted input. Copies of minimatch 10 are overridden to 11.0.1 in `package.json`. |
+| esbuild ≤ 0.24.2 dev-server CORS (moderate)     | `drizzle-kit` → `@esbuild-kit/*`                                                               | The advisory concerns esbuild's development _server_; drizzle-kit only uses esbuild to load its config file and never starts that server.                                                             |
+
+Re-check both whenever ESLint or drizzle-kit is upgraded.
