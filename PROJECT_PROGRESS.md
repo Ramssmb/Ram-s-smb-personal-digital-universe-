@@ -8,7 +8,7 @@ Last updated: 2026-11-01
 | ----- | ------------------------------- | -------------------------------------------- |
 | 1     | Repository inspection           | ✅ Done (2026-11-01)                         |
 | 2     | System design                   | ✅ Done (2026-11-01), approved               |
-| 3     | Foundation and design system    | 🟡 Built; database tests verified in CI only |
+| 3     | Foundation and design system    | ✅ Done (2026-11-01)                         |
 | 4     | Authentication and admin shell  | Not started                                  |
 | 5     | Content vertical slices         | Not started                                  |
 | 6     | Media                           | Not started                                  |
@@ -82,11 +82,17 @@ auth and security controls, design system, roadmap.
   palette, ...) are built in the phase that first uses them, so nothing is
   unused or untested.
 
-**Verified locally:** lint, typecheck, 60 unit tests, production build.
+**Verification (2026-11-01)**
 
-**Not verified locally:** integration and end-to-end tests. This machine has
-no WSL, so Docker Desktop cannot start its engine, and there is no native
-PostgreSQL. These tests run in CI against a real PostgreSQL 17.
+- Local: lint, typecheck, 60 unit tests, production build, 8 integration tests
+  and 45 end-to-end tests (15 scenarios × phone, tablet, desktop). The database
+  tests ran on a temporary portable PostgreSQL 17, because Docker cannot run on
+  this machine yet (no WSL).
+- The first CI run failed one end-to-end check (an ARIA attribute on the
+  gallery's skeleton example). It was reproduced locally, fixed in `d2e24b0`, and
+  the axe helper now names the offending elements.
+- Manual check in a browser: light and dark themes, component gallery, no
+  console errors or CSP violations.
 
 ## Open decisions
 
@@ -100,7 +106,8 @@ PostgreSQL. These tests run in CI against a real PostgreSQL 17.
 
 ## Known issues
 
-- Local database unavailable until WSL 2 is enabled (see above).
+- `docker compose up -d db` does not work on this machine until WSL 2 is
+  enabled (see above).
 - `/admin/design` is protected only by the `DESIGN_GALLERY` flag until Phase 4
   adds `requireAdmin`. It contains no data.
 
