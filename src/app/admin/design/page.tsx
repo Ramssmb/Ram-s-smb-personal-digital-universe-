@@ -122,7 +122,8 @@ export default function DesignSystemPage() {
             </p>
           </Card>
           <Card>
-            <div className="flex flex-col gap-3" aria-label="Loading example">
+            <div className="flex flex-col gap-3" role="status">
+              <span className="sr-only">Loading example content</span>
               <Skeleton className="h-4 w-1/3" />
               <Skeleton className="h-6 w-3/4" />
               <Skeleton className="h-4 w-full" />
