@@ -4,18 +4,18 @@ Last updated: 2026-11-01
 
 ## Status
 
-| Phase | Name                            | Status                                       |
-| ----- | ------------------------------- | -------------------------------------------- |
-| 1     | Repository inspection           | ✅ Done (2026-11-01)                         |
-| 2     | System design                   | ✅ Done (2026-11-01), approved               |
-| 3     | Foundation and design system    | ✅ Done (2026-11-01)                         |
-| 4     | Authentication and admin shell  | Not started                                  |
-| 5     | Content vertical slices         | Not started                                  |
-| 6     | Media                           | Not started                                  |
-| 7     | Search, SEO and discovery       | Not started                                  |
-| 8     | Security and performance review | Not started                                  |
-| 9     | Testing and quality             | Not started                                  |
-| 10    | Deployment                      | Not started                                  |
+| Phase | Name                            | Status                         |
+| ----- | ------------------------------- | ------------------------------ |
+| 1     | Repository inspection           | ✅ Done (2026-11-01)           |
+| 2     | System design                   | ✅ Done (2026-11-01), approved |
+| 3     | Foundation and design system    | ✅ Done (2026-11-01)           |
+| 4     | Authentication and admin shell  | Not started                    |
+| 5     | Content vertical slices         | Not started                    |
+| 6     | Media                           | Not started                    |
+| 7     | Search, SEO and discovery       | Not started                    |
+| 8     | Security and performance review | Not started                    |
+| 9     | Testing and quality             | Not started                    |
+| 10    | Deployment                      | Not started                    |
 
 Phase order and exit criteria: [docs/ROADMAP.md](docs/ROADMAP.md).
 
