@@ -156,7 +156,14 @@ jobs:
         run: docker compose -f docker-compose.prod.yml --env-file .env.production run --rm -e ADMIN_EMAIL=owner@example.test -e ADMIN_PASSWORD="a long smoke test passphrase" tools npm run admin:create
       - name: Logs on failure
         if: failure()
-        run: docker compose -f docker-compose.prod.yml --env-file .env.production logs
+        run: |
+          docker compose -f docker-compose.prod.yml --env-file .env.production ps -a
+          docker compose -f docker-compose.prod.yml --env-file .env.production logs
+          # Also publish the tail of each service log as annotations (readable without sign-in).
+          for svc in db migrate app caddy; do
+            docker compose -f docker-compose.prod.yml --env-file .env.production logs --no-color --tail 25 "$svc" > "/tmp/$svc.log" 2>&1 || true
+            echo "::error title=$svc logs::$(sed 's/%/%25/g' "/tmp/$svc.log" | awk 'BEGIN{ORS="%0A"} {print}')"
+          done
       - name: Stop
         if: always()
         run: docker compose -f docker-compose.prod.yml --env-file .env.production down -v

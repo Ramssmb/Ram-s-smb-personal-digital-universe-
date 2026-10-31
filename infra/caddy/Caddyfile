@@ -1,7 +1,7 @@
-{
-	# Used by Let's Encrypt for expiry notices. Optional.
-	email {$ACME_EMAIL}
-}
+# To receive Let's Encrypt expiry notices, add a global block at the top:
+#   {
+#   	email you@example.com
+#   }
 
 {$DOMAIN} {
 	encode zstd gzip
