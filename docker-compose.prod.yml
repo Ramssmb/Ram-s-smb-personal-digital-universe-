@@ -12,12 +12,14 @@ services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    # Give PostgreSQL time to checkpoint and shut down cleanly.
+    stop_grace_period: 60s
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
       POSTGRES_DB: postgres
-      SITE_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?set DB_OWNER_PASSWORD}
-      SITE_APP_PASSWORD: ${DB_APP_PASSWORD:?set DB_APP_PASSWORD}
+      SITE_OWNER_PASSWORD: ${DB_OWNER_PASSWORD:?set DB_OWNER_PASSWORD (hex characters only)}
+      SITE_APP_PASSWORD: ${DB_APP_PASSWORD:?set DB_APP_PASSWORD (hex characters only)}
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./infra/postgres/prod-init:/docker-entrypoint-initdb.d:ro
@@ -54,6 +56,9 @@ services:
   app:
     build: { context: ., target: runner }
     restart: unless-stopped
+    # A real init as PID 1 forwards SIGTERM to Node and reaps child processes.
+    init: true
+    stop_grace_period: 20s
     environment:
       DATABASE_URL: postgres://site_app:${DB_APP_PASSWORD}@db:5432/personal_site
       SITE_URL: https://${DOMAIN:?set DOMAIN}

@@ -39,7 +39,8 @@ git clone https://github.com/Ramssmb/Ram-s-smb-personal-digital-universe-.git /s
 cd /srv/personal-site
 cp .env.production.example .env.production
 chmod 600 .env.production
-# Fill in DOMAIN and generate every secret with: openssl rand -base64 32
+# Fill in DOMAIN and generate every secret with: openssl rand -hex 32
+# (hex only: base64 can contain "/", "+" and "=", which break the database URLs)
 nano .env.production
 
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
