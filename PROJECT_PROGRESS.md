@@ -108,7 +108,7 @@ site. Page weight is 260–310 KB.
 | --------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit (Vitest)                     | **133 passed**               | Config validation incl. production rules, TOTP (RFC 6238 vectors), field schemas, URL safety, Markdown sanitizing, file signatures, client IP, form tokens |
 | Integration (Vitest)              | **133 passed**, 4 skipped    | Everything before, plus 2FA (12 tests), retention, SMTP notifications against a real SMTP server. The 4 S3 tests run in CI only (need an S3 server)        |
-| End-to-end (Playwright)           | **90 passed**                   | Owner workflows for every content type, 2FA sign-in, anonymous access blocked, axe on dashboard and public pages × 3 sizes × 2 themes, CSP, SEO            |
+| End-to-end (Playwright)           | **90 passed**                | Owner workflows for every content type, 2FA sign-in, anonymous access blocked, axe on dashboard and public pages × 3 sizes × 2 themes, CSP, SEO            |
 | Lint / typecheck / format / build | Clean                        |                                                                                                                                                            |
 | CI (GitHub Actions)               | See CHANGELOG / final report | quality, integration (+ S3 on SeaweedFS + retention), e2e, production smoke test (+ backup/restore), audit                                                 |
 
