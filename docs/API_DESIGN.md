@@ -5,17 +5,17 @@
 
 ## 1. Conventions
 
-| Topic           | Rule                                                                                                                                                      |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Base path       | `/api/v1` — public endpoints; `/api/v1/admin` — owner only                                                                                                |
-| Format          | `application/json; charset=utf-8`; uploads use `multipart/form-data`                                                                                      |
-| Ids             | UUIDs in paths; public pages use slugs                                                                                                                    |
-| Dates           | `YYYY-MM-DD` for calendar dates, ISO 8601 UTC for timestamps                                                                                              |
-| Validation      | Every body, query and path parameter parsed with a Zod schema from `src/lib/validation`; unknown fields rejected                                          |
-| Partial updates | `PATCH` with only changed fields                                                                                                                          |
-| Concurrency     | Each content row returns `updatedAt`; `PATCH` must send it back, and a stale value returns `409 conflict` (prevents two open tabs overwriting each other) |
-| Caching         | Admin responses: `Cache-Control: no-store`. Public JSON: short `s-maxage` + tag revalidation                                                              |
-| CSRF            | Every non-`GET` request must carry an `Origin` header equal to the site origin; otherwise `403`. Session cookie is `SameSite=Lax`.                        |
+| Topic       | Rule                                                                                                                                                  |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base path   | `/api/v1` — public endpoints; `/api/v1/admin` — owner only                                                                                            |
+| Format      | `application/json; charset=utf-8`; uploads use `multipart/form-data`                                                                                  |
+| Ids         | UUIDs in paths; public pages use slugs                                                                                                                |
+| Dates       | `YYYY-MM-DD` for calendar dates, ISO 8601 UTC for timestamps                                                                                          |
+| Validation  | Every body, query and path parameter parsed with a Zod schema from `src/lib/validation`; unknown fields rejected                                      |
+| Updates     | `PATCH` sends the **complete form**, not only changed fields: the body is validated like a create, and fields left out are cleared (§7)               |
+| Concurrency | Each content row returns `updatedAt`; `PATCH` sends it back, and a stale value returns `409 conflict` (prevents two open tabs overwriting each other) |
+| Caching     | Admin responses: `Cache-Control: no-store`. Public JSON: short `s-maxage` + tag revalidation                                                          |
+| CSRF        | Every non-`GET` request must carry an `Origin` header equal to the site origin; otherwise `403`. Session cookie is `SameSite=Lax`.                    |
 
 ### Error shape
 
@@ -86,7 +86,7 @@ form components:
 | GET    | `/admin/<resource>`               | List with search, filters, pagination                                                     |
 | POST   | `/admin/<resource>`               | Create (always as `draft`)                                                                |
 | GET    | `/admin/<resource>/:id`           | Read one, including drafts and private                                                    |
-| PATCH  | `/admin/<resource>/:id`           | Update fields                                                                             |
+| PATCH  | `/admin/<resource>/:id`           | Replace the item's fields with the complete form (see §7)                                 |
 | POST   | `/admin/<resource>/:id/publish`   | Validate completeness, set `published`, revalidate pages                                  |
 | POST   | `/admin/<resource>/:id/unpublish` | Back to `draft`                                                                           |
 | POST   | `/admin/<resource>/:id/archive`   | Set `archived`                                                                            |
@@ -134,12 +134,12 @@ incomplete.
 | Skill          | `skills`, `home`, every page that lists it, `search`                                |
 | Settings / SEO | all (`layout`)                                                                      |
 
-## 7. As built (v0.2.0)
+## 7. As built (v0.4.0)
 
 | Method             | Path                                                                             | Notes                                                              |
 | ------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | GET, POST          | `/api/v1/admin/collections/:collection`                                          | List (`q`, `status`, `page`, `pageSize`) / create (always a draft) |
-| GET, PATCH, DELETE | `/api/v1/admin/collections/:collection/:id`                                      | PATCH body `{ data, updatedAt }`; stale `updatedAt` → 409          |
+| GET, PATCH, DELETE | `/api/v1/admin/collections/:collection/:id`                                      | PATCH body `{ data, updatedAt }` with the complete form (below)    |
 | POST               | `/api/v1/admin/collections/:collection/:id/(publish\|unpublish\|archive\|flags)` | `flags` body `{ visibility?, isFeatured? }`                        |
 | POST               | `/api/v1/admin/collections/:collection/reorder`                                  | `{ ids: [...] }`                                                   |
 | GET, PUT           | `/api/v1/admin/profile`, `/api/v1/admin/settings`                                | Singletons                                                         |
@@ -150,7 +150,10 @@ incomplete.
 | PATCH, DELETE      | `/api/v1/admin/messages/:id`                                                     | Status `new`/`read`/`archived`/`spam`                              |
 | POST               | `/api/v1/admin/account/password`                                                 | Signs out every other session                                      |
 | DELETE             | `/api/v1/admin/account/sessions`                                                 | Signs out other sessions                                           |
-| POST               | `/api/v1/auth/login`, `/api/v1/auth/logout`                                      |                                                                    |
+| POST, DELETE       | `/api/v1/admin/account/totp`                                                     | Start two-factor setup / turn it off (password + code)             |
+| POST               | `/api/v1/admin/account/totp/confirm`                                             | Confirm setup with a code; returns the recovery codes once         |
+| POST               | `/api/v1/auth/login`, `/api/v1/auth/logout`                                      | Login returns a sign-in ticket instead of a session when 2FA is on |
+| POST               | `/api/v1/auth/totp`                                                              | Second sign-in step: ticket + authenticator or recovery code       |
 | POST               | `/api/v1/contact`                                                                | 202 on success (also for silently filed spam)                      |
 | GET                | `/api/v1/health`                                                                 |                                                                    |
 | GET                | `/media/<key>`                                                                   | Public files only, immutable cache                                 |
@@ -159,4 +162,24 @@ Differences from the design above: pagination is offset-based (`page`), not
 cursor-based; preview is an owner-only page (`/admin/preview/:collection/:id`)
 rather than a preview token; search is the server-rendered `/search` page
 (rate-limited) rather than a JSON endpoint; the journal "load more" endpoint was
-replaced by page links; there are no TOTP endpoints yet.
+replaced by page links; two-factor authentication uses the endpoints above
+rather than `/setup` · `/confirm` · `/disable`.
+
+**PATCH sends the complete form.** The dashboard always sends every field of the
+item, and the server relies on that:
+
+- `data` is validated with the same schema as a create, so required fields
+  must be present (otherwise `400 validation_failed`) and unknown fields are
+  rejected.
+- An optional field left out of `data` is **cleared** (stored as `null`).
+  Columns that cannot be empty keep their current value.
+- Relation lists (`skillIds`, `tagIds`, `mediaIds`) replace the existing links;
+  leaving one out removes all of them.
+- `updatedAt` should be the value from the last read. A stale value returns
+  `409 conflict`. If it is omitted, the conflict check is skipped — the
+  dashboard always sends it.
+
+To change one field from a script, read the item first (`GET`), then send every
+form field defined for that collection in `src/lib/content/collections.ts`,
+with the one value changed. System fields such as `id`, `status` and the
+timestamps are not form fields and are rejected inside `data`.

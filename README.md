@@ -92,6 +92,7 @@ tests/                 unit/ · integration/ · e2e/
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)                         | Production deployment, backups, rollback      |
 | [docs/DEPLOYMENT_PREPARATION.md](docs/DEPLOYMENT_PREPARATION.md) | Before deploying: costs, decisions, checklist |
 | [docs/CONTENT_GUIDE.md](docs/CONTENT_GUIDE.md)                   | What to enter in the dashboard                |
+| [docs/FUNCTIONAL_AUDIT.md](docs/FUNCTIONAL_AUDIT.md)             | Functional audit of the running app (v0.4.0)  |
 | [docs/ROADMAP.md](docs/ROADMAP.md)                               | Phases and exit criteria                      |
 | [CHANGELOG.md](CHANGELOG.md)                                     | Release notes                                 |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                               | Workflow and rules                            |
