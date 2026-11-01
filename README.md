@@ -4,8 +4,9 @@ A full-scale personal digital platform showcasing my education, skills,
 projects, achievements, experience, daily learning journey and professional
 links — managed entirely from a private admin dashboard.
 
-> **Status:** feature-complete application (v0.2.0), tested locally and in CI.
-> Not yet deployed to a public domain — see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+> **Status:** v0.4.0, ready for a production deployment and tested locally and
+> in CI (including backup and restore). Not yet deployed to a public domain —
+> see [docs/DEPLOYMENT_PREPARATION.md](docs/DEPLOYMENT_PREPARATION.md).
 > Progress and known limitations: [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md).
 
 ## What it does

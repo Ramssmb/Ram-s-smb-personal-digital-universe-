@@ -32,32 +32,32 @@ can stay on free options.
 information or content · 🔧 = 3. I can prepare it in the repository ·
 🧪 = 4. must be tested after deployment.
 
-| #   | Task                                                                    | Type | Notes                                                                          |
-| --- | ----------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------------ |
-| 1   | Choose a VPS provider, plan and region                                  | 🛒   | §3, §4                                                                         |
-| 2   | Choose and register a domain name                                       | 🛒   | §5                                                                             |
-| 3   | Choose an off-site backup destination                                   | 🛒   | §6 — free options exist                                                        |
-| 4   | Decide whether to use email notifications, and which SMTP provider      | 🛒   | Optional — free options exist (§7)                                             |
-| 5   | Decide whether to use object storage for uploads                        | 🛒   | Optional — not needed on a VPS (recommended: no)                               |
-| 6   | Decide on `www.` (redirect it, or don't use it)                         | 🛒   | Affects DNS (§5)                                                               |
-| 7   | Generate the secrets on the server                                      | ✍️   | You run `openssl rand -hex 32`; I never see the values (§8)                    |
-| 8   | Owner email address and password for the dashboard                      | ✍️   | Typed on the server, never stored in the repository                            |
-| 9   | Email for Let's Encrypt certificate notices (optional)                  | ✍️   | Added to the Caddyfile on the server                                           |
-| 10  | Website content: profile, about, education years, skills, projects…     | ✍️   | [CONTENT_GUIDE.md](CONTENT_GUIDE.md) — nothing unconfirmed is published        |
-| 11  | Profile photo, project screenshots, social-sharing image                | ✍️   | Uploaded through the dashboard                                                 |
-| 12  | Social/profile links (GitHub, LinkedIn, …)                              | ✍️   | Dashboard → Content → Links                                                    |
-| 13  | Update the README status line (still says v0.2.0)                       | 🔧   | Documentation only                                                             |
-| 14  | A first-day server setup script or checklist for your chosen provider   | 🔧   | Once you have chosen one (firewall, swap, Docker install)                      |
-| 15  | An off-site backup sync command for your chosen destination             | 🔧   | Once you have chosen one (rclone/restic config template, no credentials)       |
-| 16  | Add the media-restore step to the CI smoke test                         | 🔧   | The **database** restore is tested in CI; the media-restore command is not yet |
-| 17  | Optionally add your Let's Encrypt email to the Caddyfile template       | 🔧   | Needs item 9                                                                   |
-| 18  | HTTPS certificate issued, `http://` redirects, security headers present | 🧪   | §11                                                                            |
-| 19  | Owner sign-in, two-factor setup, recovery codes stored offline          | 🧪   | §11                                                                            |
-| 20  | Contact form message arrives in the dashboard (and by email, if set up) | 🧪   | §11                                                                            |
-| 21  | First backup, off-site copy, and a test restore on the real server      | 🧪   | §11                                                                            |
-| 22  | Lighthouse performance re-measured on the real site                     | 🧪   | Local simulated LCP 2.7–2.8 s on image pages; real network may differ          |
-| 23  | External uptime monitor on `/api/v1/health`                             | 🧪   | Free (§9, step 14)                                                             |
-| 24  | Database port not reachable from the internet                           | 🧪   | §11                                                                            |
+| #   | Task                                                                    | Type | Notes                                                                    |
+| --- | ----------------------------------------------------------------------- | ---- | ------------------------------------------------------------------------ |
+| 1   | Choose a VPS provider, plan and region                                  | 🛒   | §3, §4                                                                   |
+| 2   | Choose and register a domain name                                       | 🛒   | §5                                                                       |
+| 3   | Choose an off-site backup destination                                   | 🛒   | §6 — free options exist                                                  |
+| 4   | Decide whether to use email notifications, and which SMTP provider      | 🛒   | Optional — free options exist (§7)                                       |
+| 5   | Decide whether to use object storage for uploads                        | 🛒   | Optional — not needed on a VPS (recommended: no)                         |
+| 6   | Decide on `www.` (redirect it, or don't use it)                         | 🛒   | Affects DNS (§5)                                                         |
+| 7   | Generate the secrets on the server                                      | ✍️   | You run `openssl rand -hex 32`; I never see the values (§8)              |
+| 8   | Owner email address and password for the dashboard                      | ✍️   | Typed on the server, never stored in the repository                      |
+| 9   | Email for Let's Encrypt certificate notices (optional)                  | ✍️   | Added to the Caddyfile on the server                                     |
+| 10  | Website content: profile, about, education years, skills, projects…     | ✍️   | [CONTENT_GUIDE.md](CONTENT_GUIDE.md) — nothing unconfirmed is published  |
+| 11  | Profile photo, project screenshots, social-sharing image                | ✍️   | Uploaded through the dashboard                                           |
+| 12  | Social/profile links (GitHub, LinkedIn, …)                              | ✍️   | Dashboard → Content → Links                                              |
+| 13  | Update the README status line (said v0.2.0)                             | 🔧   | ✅ Done                                                                  |
+| 14  | A first-day server setup script or checklist for your chosen provider   | 🔧   | Once you have chosen one (firewall, swap, Docker install)                |
+| 15  | An off-site backup sync command for your chosen destination             | 🔧   | Once you have chosen one (rclone/restic config template, no credentials) |
+| 16  | Add the media-restore step to the CI smoke test                         | 🔧   | ✅ Done; the documented command was also fixed (file-permission problem) |
+| 17  | Optionally add your Let's Encrypt email to the Caddyfile template       | 🔧   | Needs item 9                                                             |
+| 18  | HTTPS certificate issued, `http://` redirects, security headers present | 🧪   | §11                                                                      |
+| 19  | Owner sign-in, two-factor setup, recovery codes stored offline          | 🧪   | §11                                                                      |
+| 20  | Contact form message arrives in the dashboard (and by email, if set up) | 🧪   | §11                                                                      |
+| 21  | First backup, off-site copy, and a test restore on the real server      | 🧪   | §11                                                                      |
+| 22  | Lighthouse performance re-measured on the real site                     | 🧪   | Local simulated LCP 2.7–2.8 s on image pages; real network may differ    |
+| 23  | External uptime monitor on `/api/v1/health`                             | 🧪   | Free (§9, step 14)                                                       |
+| 24  | Database port not reachable from the internet                           | 🧪   | §11                                                                      |
 
 ---
 
@@ -263,8 +263,8 @@ RESTORE_OVERWRITE=yes ./infra/backup/restore.sh /var/backups/personal-site/db-<t
 backup files back from off-site, start the stack, restore the database as
 above and the media as in DEPLOYMENT.md §8, then point DNS at the new server.
 
-Database restore — tested in CI on every push. Media restore — the command is
-documented but **not yet tested** (item 16).
+Database and media restore — both tested in CI on every push (production
+smoke test).
 
 ---
 
@@ -337,4 +337,4 @@ expected monthly total.
 - [ ] **Owner sign-in email** for the dashboard.
 - [ ] **Password manager** to hold the secrets, owner password and recovery codes.
 - [ ] **What content is ready to publish at launch**, and what stays as a draft.
-- [ ] **Which repository items (§2, 🔧) you want me to prepare** — README status line, server setup checklist, backup sync template, media-restore test, Caddyfile email.
+- [ ] **Which repository items (§2, 🔧) you want me to prepare** — server setup checklist, backup sync template, Caddyfile email (each needs one of the decisions above).

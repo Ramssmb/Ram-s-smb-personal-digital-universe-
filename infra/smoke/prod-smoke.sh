@@ -7,7 +7,8 @@
 # Checks: Caddy config validity, HTTPS, health, security headers, admin API
 # protection, database not exposed, owner account creation, sign-in (database +
 # Argon2 in the image), image upload (sharp in the image + media volume),
-# persistence across a full restart, and graceful shutdown.
+# persistence across a full restart, backup, restore into a separate database,
+# disaster recovery of the database and the media files, and graceful shutdown.
 set -euo pipefail
 
 COMPOSE=(docker compose -f docker-compose.prod.yml --env-file .env.production)
@@ -111,6 +112,15 @@ login
 "${COMPOSE[@]}" run --rm migrate || fail "migrations cannot run on the restored database"
 test "$("${COMPOSE[@]}" exec -T db psql -U postgres -d personal_site -At -c "SELECT tableowner FROM pg_tables WHERE tablename = 'users'")" = "site_owner" \
   || fail "restored live tables are not owned by site_owner"
+
+step "Disaster recovery: restore lost media from the archive"
+"${COMPOSE[@]}" run --rm --no-deps -T --entrypoint sh app -c "rm /data/storage/public/$key"
+test "$(curl -sk -o /dev/null -w '%{http_code}' "$BASE/media/$key")" = "404" \
+  || fail "the image was not removed before the media restore"
+# The same command as docs/DEPLOYMENT.md §8. The archive is streamed in, so it
+# works whichever host user owns the (mode 600) backup file.
+"${COMPOSE[@]}" run --rm --no-deps -T --entrypoint sh app -c "tar -xzf - -C /data" < "$media"
+"${CURL[@]}" -o /dev/null "$BASE/media/$key" || fail "the image is not served after the media restore"
 rm -rf "$BACKUP_DIR"
 
 step "The app shuts down gracefully"

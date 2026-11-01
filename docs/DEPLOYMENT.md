@@ -182,11 +182,15 @@ tables are owned by `site_owner`. Exit code 0 = identical; 2 = the copy differs
 
 ```bash
 RESTORE_OVERWRITE=yes ./infra/backup/restore.sh /var/backups/personal-site/db-YYYYMMDDTHHMMSSZ.dump personal_site
-# Media (only with the local driver):
-docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --no-deps \
-  -v /var/backups/personal-site:/backup --entrypoint sh app \
-  -c "tar -xzf /backup/media-YYYYMMDDTHHMMSSZ.tar.gz -C /data"
+# Media (only with the local driver). The archive is streamed in, so this works
+# whichever host user owns the backup file:
+docker compose -f docker-compose.prod.yml --env-file .env.production run --rm --no-deps -T \
+  --entrypoint sh app -c "tar -xzf - -C /data" \
+  < /var/backups/personal-site/media-YYYYMMDDTHHMMSSZ.tar.gz
 ```
+
+Restoring media adds the files from the archive back; it does not delete files
+uploaded after the backup.
 
 The script stops the app, recreates the database, restores it as
 `site_owner` (so later migrations still work) with `site_app`'s row-level
@@ -201,7 +205,10 @@ image → back up → check the media archive contains it → restore into the
 separate check database (row counts match, `site_app` can read it) → add a
 contact message → restore over the live database → the message is gone, the
 site is healthy, sign-in works, the image is served, and `migrate` runs on the
-restored database. First passed on commit `5fb7d4b` (2026-11-01).
+restored database → delete the image from the media volume → restore it with
+the media command above → it is served again. Database steps first passed on
+commit `5fb7d4b` (2026-11-01); the media step was added afterwards (see
+CHANGELOG.md).
 
 ## 9. Contact form email notifications
 

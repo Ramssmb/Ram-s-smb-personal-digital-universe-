@@ -2,6 +2,21 @@
 
 All notable changes to this project. Dates are UTC.
 
+## [Unreleased]
+
+### Fixed
+
+- The documented media restore failed when the backup file belonged to a
+  different host user than the container's (backups are mode 600). The archive
+  is now streamed into the container.
+
+### Added
+
+- The production smoke test deletes an uploaded image and restores it from the
+  media backup, so media recovery is tested in CI like the database.
+- docs/DEPLOYMENT_PREPARATION.md: costs, decisions and order of work before
+  deploying.
+
 ## [0.4.0] — 2026-11-01
 
 Production readiness. Nothing was deployed, bought or registered.
