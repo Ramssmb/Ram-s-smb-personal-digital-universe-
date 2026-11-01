@@ -85,6 +85,34 @@ wait_healthy
 login
 "${CURL[@]}" -o /dev/null "$BASE/media/$key" || fail "uploaded image was lost on restart"
 
+step "Back up the database and media"
+BACKUP_DIR="$PWD/.backup-test"
+rm -rf "$BACKUP_DIR"
+BACKUP_DIR="$BACKUP_DIR" infra/backup/backup.sh
+dump=$(ls "$BACKUP_DIR"/db-*.dump)
+media=$(ls "$BACKUP_DIR"/media-*.tar.gz)
+tar -tzf "$media" | grep -q "storage/public/$key" || fail "the media archive does not contain the uploaded image"
+
+step "Restore into a separate database and compare it with the live one"
+infra/backup/restore.sh "$dump"
+"${COMPOSE[@]}" exec -T db psql -U postgres -d personal_site_restore_check -At \
+  -c "SET ROLE site_app; SELECT count(*) FROM users" | grep -qx 1 || fail "site_app cannot read the restored copy"
+
+step "Disaster recovery: replace the live database with the backup"
+# A change made after the backup must disappear after the restore.
+"${COMPOSE[@]}" exec -T db psql -U postgres -d personal_site -q -c \
+  "INSERT INTO contact_messages (name, email, body) VALUES ('After backup', 'later@example.test', 'Arrived after the backup.')"
+RESTORE_OVERWRITE=yes infra/backup/restore.sh "$dump" personal_site
+test "$("${COMPOSE[@]}" exec -T db psql -U postgres -d personal_site -At -c "SELECT count(*) FROM contact_messages WHERE name = 'After backup'")" = "0" \
+  || fail "the restore did not return the database to the backup's state"
+wait_healthy
+login
+"${CURL[@]}" -o /dev/null "$BASE/media/$key" || fail "media missing after the database restore"
+"${COMPOSE[@]}" run --rm migrate || fail "migrations cannot run on the restored database"
+test "$("${COMPOSE[@]}" exec -T db psql -U postgres -d personal_site -At -c "SELECT tableowner FROM pg_tables WHERE tablename = 'users'")" = "site_owner" \
+  || fail "restored live tables are not owned by site_owner"
+rm -rf "$BACKUP_DIR"
+
 step "The app shuts down gracefully"
 started=$(date +%s)
 "${COMPOSE[@]}" stop -t 20 app

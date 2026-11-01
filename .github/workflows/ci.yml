@@ -84,16 +84,21 @@ jobs:
           ADMIN_PASSWORD: a long ci only passphrase 2026
       - name: Start an S3-compatible server for the object-storage tests
         run: |
-          docker run -d --name s3 -p 4566:4566 -e SERVICES=s3 localstack/localstack:2026.10.0
+          # SeaweedFS with one identity, so request signatures are really checked.
+          echo '{"identities":[{"name":"test","credentials":[{"accessKey":"test","secretKey":"test-secret-key"}],"actions":["Admin","Read","Write","List","Tagging"]}]}' > /tmp/s3.json
+          docker run -d --name s3 -p 8333:8333 -v /tmp/s3.json:/etc/s3.json:ro chrislusf/seaweedfs:4.48 \
+            server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/s3.json
           for i in $(seq 1 60); do
-            if curl -fs http://localhost:4566/_localstack/health | grep -q '"s3": "\(available\|running\)"'; then exit 0; fi
+            # Any HTTP answer (anonymous requests get 403) means the S3 gateway is up.
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8333/ || true)
+            if [ "$code" != "000" ]; then echo "S3 gateway up (HTTP $code)"; exit 0; fi
             sleep 2
           done
           docker logs s3 | tail -40
           exit 1
       - run: npm run test:integration
         env:
-          S3_TEST_ENDPOINT: http://localhost:4566
+          S3_TEST_ENDPOINT: http://localhost:8333
       - name: Data retention job runs
         run: npm run maintenance
 

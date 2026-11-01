@@ -32,3 +32,5 @@ desktop.ini
 # Playwright
 playwright/.auth/
 .e2e-storage/
+
+.backup-test/
