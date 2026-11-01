@@ -82,7 +82,20 @@ jobs:
         env:
           ADMIN_EMAIL: ci-owner@example.test
           ADMIN_PASSWORD: a long ci only passphrase 2026
+      - name: Start an S3-compatible server for the object-storage tests
+        run: |
+          docker run -d --name s3 -p 4566:4566 -e SERVICES=s3 localstack/localstack:2026.10.0
+          for i in $(seq 1 60); do
+            if curl -fs http://localhost:4566/_localstack/health | grep -q '"s3": "\(available\|running\)"'; then exit 0; fi
+            sleep 2
+          done
+          docker logs s3 | tail -40
+          exit 1
       - run: npm run test:integration
+        env:
+          S3_TEST_ENDPOINT: http://localhost:4566
+      - name: Data retention job runs
+        run: npm run maintenance
 
   e2e:
     name: Build and end-to-end tests

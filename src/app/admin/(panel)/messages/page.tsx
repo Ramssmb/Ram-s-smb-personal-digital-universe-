@@ -6,7 +6,9 @@ import { EmptyState, Badge } from "@/components/ui/display";
 import { label } from "@/lib/content/enums";
 import { cn } from "@/lib/cn";
 import { requireAdminPage } from "@/server/auth/guard";
+import { env } from "@/server/env";
 import { listMessages } from "@/server/services/contact";
+import { notificationsEnabled } from "@/server/services/notify";
 
 export const metadata = { title: "Messages" };
 
@@ -31,6 +33,11 @@ export default async function MessagesPage({
         <h1 className="text-h1 font-semibold">Messages</h1>
         <p className="mt-2 text-fg-muted">
           Submissions from the contact form. Shown as plain text only.
+        </p>
+        <p className="mt-1 text-small text-fg-muted">
+          {notificationsEnabled()
+            ? `Email notifications are on: new messages are also sent to ${env().CONTACT_NOTIFY_TO}.`
+            : "Email notifications are off. Set SMTP_URL, SMTP_FROM and CONTACT_NOTIFY_TO on the server to turn them on."}
         </p>
       </header>
       <nav aria-label="Message filters" className="flex flex-wrap gap-2">

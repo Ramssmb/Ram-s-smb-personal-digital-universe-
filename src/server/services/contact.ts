@@ -14,6 +14,7 @@ import { keyedHash, safeEqual } from "@/server/security/crypto";
 import { enforce, RULES } from "@/server/security/rate-limit";
 
 import { audit } from "./audit";
+import { notifyNewMessage } from "./notify";
 
 const MIN_FILL_MS = 3_000;
 const MAX_TOKEN_AGE_MS = 2 * 60 * 60 * 1000;
@@ -52,7 +53,7 @@ export const contactSchema = z.object({
  * Stores a contact message. Suspected spam is stored with status "spam" and
  * answered exactly like a real message, so bots learn nothing.
  */
-export async function submitContact(input: unknown, headers: Headers): Promise<void> {
+export async function submitContact(input: unknown, headers: Headers) {
   const settings = await getSettingsRow();
   if (settings.contactEnabled === false) {
     throw new AppError("forbidden", "The contact form is currently closed.");
@@ -79,7 +80,17 @@ export async function submitContact(input: unknown, headers: Headers): Promise<v
       ipHash,
       userAgent: headers.get("user-agent")?.slice(0, 300) ?? null,
     });
-  if (!spam) logger.info("contact message received");
+  if (spam) return { notification: Promise.resolve("skipped" as const) };
+  logger.info("contact message received");
+  // Sent in the background: a slow mail server never delays the visitor, and
+  // the message is already stored if sending fails.
+  const notification = notifyNewMessage({
+    name: data.name,
+    email: data.email,
+    subject: data.subject,
+    body: data.message,
+  });
+  return { notification };
 }
 
 export async function listMessages(options: { status?: string; page?: number } = {}) {
