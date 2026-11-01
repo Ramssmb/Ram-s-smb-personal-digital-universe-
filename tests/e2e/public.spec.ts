@@ -26,7 +26,7 @@ async function expectNoAxeViolations(page: Page) {
       .every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity),
   );
   const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
+    .withTags(["wcag2a", "wcag2aa", "wcag22aa", "best-practice"])
     .analyze();
   expect(
     results.violations.map(

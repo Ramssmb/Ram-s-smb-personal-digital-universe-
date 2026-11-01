@@ -50,3 +50,23 @@ export function formatMonthKey(key: string): string {
 export function plural(count: number, one: string, many = `${one}s`): string {
   return `${count} ${count === 1 ? one : many}`;
 }
+
+/**
+ * A plain-text excerpt of Markdown for meta descriptions: drops code, images,
+ * link targets and formatting characters, then cuts at a word boundary.
+ */
+export function plainExcerpt(markdown: string | null | undefined, max = 155): string {
+  if (!markdown) return "";
+  const text = markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // List markers only at the start of a line, so "fan-out" keeps its hyphen.
+    .replace(/^\s*(?:[-+*]|\d+\.)\s+/gm, " ")
+    .replace(/[`*_>#~|]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  return `${cut.slice(0, cut.lastIndexOf(" ") > 40 ? cut.lastIndexOf(" ") : cut.length)}…`;
+}

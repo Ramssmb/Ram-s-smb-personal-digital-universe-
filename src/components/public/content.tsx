@@ -2,6 +2,7 @@ import { ArrowUpRight, FileText } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import type { ReactNode } from "react";
+import { preload } from "react-dom";
 
 import { Badge, Tag } from "@/components/ui/display";
 import { ExternalLink } from "@/components/ui/text-link";
@@ -43,6 +44,15 @@ export function ResponsiveImage({
   priority?: boolean;
   className?: string;
 }) {
+  if (priority) {
+    // Announce the likely LCP image in <head> so the download starts before the body is parsed.
+    preload(image.src, {
+      as: "image",
+      imageSrcSet: image.srcSet,
+      imageSizes: sizes,
+      fetchPriority: "high",
+    });
+  }
   return (
     // eslint-disable-next-line @next/next/no-img-element -- variants are generated at upload time
     <img
@@ -103,10 +113,14 @@ export interface ProjectCardData {
 export function ProjectCard({
   project,
   priority = false,
+  headingLevel = 3,
 }: {
   project: ProjectCardData;
   priority?: boolean;
+  /** 2 on pages where the cards follow the h1 directly; 3 under a section heading. */
+  headingLevel?: 2 | 3;
 }) {
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface transition-[border-color,transform] duration-200 ease-[var(--ease-standard)] hover:-translate-y-0.5 hover:border-line-strong">
       {project.cover && (
@@ -126,14 +140,14 @@ export function ProjectCard({
             <span className="text-small text-fg-muted">{project.categoryName}</span>
           )}
         </div>
-        <h3 className="text-h3 font-semibold">
+        <Heading className="text-h3 font-semibold">
           <Link
             href={`/projects/${project.slug}` as Route}
             className="after:absolute after:inset-0"
           >
             {project.title}
           </Link>
-        </h3>
+        </Heading>
         {project.summary && <p className="text-small text-fg-muted">{project.summary}</p>}
         <div className="mt-auto flex flex-col gap-3 pt-2">
           <TagList items={project.skills.slice(0, 6)} label="Technologies" />

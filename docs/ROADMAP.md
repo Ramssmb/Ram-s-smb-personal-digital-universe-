@@ -70,7 +70,7 @@ Global search and command palette, sitemap, robots, canonical URLs, per-page
 metadata, SEO overrides UI, Open Graph images, JSON-LD (`Person`, `WebSite`,
 `Article` for journal entries, `CreativeWork` for projects), RSS feed.
 
-## Phase 8 — Security and performance review 🟡 (security tested; performance budgets not yet measured)
+## Phase 8 — Security and performance review ✅ (Lighthouse measured locally; re-measure once deployed)
 
 Full review against `docs/AUTH_AND_SECURITY.md`; dependency audit; CSP
 verification; Lighthouse and Core Web Vitals budgets (LCP < 2.5 s, CLS < 0.1,

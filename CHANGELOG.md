@@ -2,6 +2,26 @@
 
 All notable changes to this project. Dates are UTC.
 
+## [0.2.2] — 2026-11-01
+
+### Fixed
+
+- **Metadata was streamed into `<body>`** for browsers and crawlers that
+  Next.js does not recognise as bots, so some link previews and audit tools saw
+  no description or Open Graph tags. Metadata is now always in `<head>`.
+- **Journal entries without a summary had no meta description;** a plain-text
+  excerpt of the first written section is used instead.
+- **Heading order on `/projects`** skipped from h1 to h3; project cards there are h2.
+- **Dashboard landmarks:** the sidebar is now a single named navigation
+  landmark, and the publishing panel is a named region.
+
+### Changed
+
+- Priority images are preloaded in `<head>`; the first featured project image on
+  the home page loads eagerly when there is no profile photo; the monospace font
+  is no longer preloaded.
+- End-to-end accessibility checks now include axe's best-practice rules.
+
 ## [0.2.1] — 2026-11-01
 
 ### Fixed

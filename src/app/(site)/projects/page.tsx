@@ -88,7 +88,12 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
           </p>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {result.items.map((project, index) => (
-              <ProjectCard key={project.id} project={project} priority={index < 3} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                priority={index < 3}
+                headingLevel={2}
+              />
             ))}
           </div>
           <Pagination

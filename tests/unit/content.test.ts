@@ -1,7 +1,7 @@
 import { COLLECTIONS, COLLECTION_KEYS, isCollectionKey } from "@/lib/content/collections";
 import { buildSchema, slugify } from "@/lib/content/fields";
 import { PROFILE_FIELDS, SETTINGS_FIELDS } from "@/lib/content/singletons";
-import { formatDate, formatMonthKey, formatRange } from "@/lib/format";
+import { formatDate, formatMonthKey, formatRange, plainExcerpt } from "@/lib/format";
 
 describe("slugify", () => {
   it.each([
@@ -160,5 +160,34 @@ describe("date formatting", () => {
     expect(formatRange("2025-06-01", "2025-08-31")).toBe("Jun 2025 – Aug 2025");
     expect(formatRange("2025-06-01", null)).toBe("Jun 2025 – Present");
     expect(formatRange(null, null)).toBe("");
+  });
+});
+
+describe("plainExcerpt", () => {
+  it("strips Markdown and keeps link text", () => {
+    expect(plainExcerpt("Read **the** [docs](https://x.test) and `run` it")).toBe(
+      "Read the docs and run it",
+    );
+  });
+
+  it("drops code blocks and images", () => {
+    expect(plainExcerpt("Intro\n```ts\nconst secret = 1;\n```\n![alt](x.png) end")).toBe(
+      "Intro end",
+    );
+  });
+
+  it("cuts long text at a word boundary with an ellipsis", () => {
+    const excerpt = plainExcerpt("word ".repeat(100), 60);
+    expect(excerpt.length).toBeLessThanOrEqual(60);
+    expect(excerpt.endsWith("…")).toBe(true);
+    expect(excerpt).not.toMatch(/wor…$/);
+  });
+});
+
+describe("plainExcerpt list handling", () => {
+  it("removes list markers but keeps hyphenated words", () => {
+    expect(plainExcerpt("- fan-out matters\n- 2. step\n1. first")).toBe(
+      "fan-out matters 2. step first",
+    );
   });
 });

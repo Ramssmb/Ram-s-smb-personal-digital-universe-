@@ -220,8 +220,8 @@ export default async function HomePage() {
               action={<MoreLink href="/projects">All projects</MoreLink>}
             />
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {projects.items.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+              {projects.items.map((project, index) => (
+                <ProjectCard key={project.id} project={project} priority={!photo && index === 0} />
               ))}
             </div>
           </Container>

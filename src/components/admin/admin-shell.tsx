@@ -65,7 +65,7 @@ function isActive(pathname: string, href: string): boolean {
 function NavList({ newMessages, onNavigate }: { newMessages: number; onNavigate?: () => void }) {
   const pathname = usePathname() ?? "";
   return (
-    <nav aria-label="Dashboard" className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       {groups(newMessages).map((group) => (
         <div key={group.label || "top"} className="flex flex-col gap-0.5">
           {group.label && <p className="eyebrow mb-1 px-3">{group.label}</p>}
@@ -96,7 +96,7 @@ function NavList({ newMessages, onNavigate }: { newMessages: number; onNavigate?
           })}
         </div>
       ))}
-    </nav>
+    </div>
   );
 }
 
@@ -131,7 +131,10 @@ export function AdminShell({
       >
         Skip to content
       </a>
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-surface lg:flex">
+      <nav
+        aria-label="Dashboard"
+        className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-surface lg:flex"
+      >
         <div className="flex h-16 items-center px-6">
           <Link href="/admin" className="text-body font-semibold">
             Dashboard
@@ -140,7 +143,7 @@ export function AdminShell({
         <div className="flex-1 overflow-y-auto px-3 pb-6">
           <NavList newMessages={newMessages} />
         </div>
-      </aside>
+      </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-line bg-canvas/85 px-4 backdrop-blur-md sm:px-6">
@@ -167,9 +170,9 @@ export function AdminShell({
                       </IconButton>
                     </RadixDialog.Close>
                   </div>
-                  <div className="flex-1 overflow-y-auto px-3 pb-6">
+                  <nav aria-label="Dashboard" className="flex-1 overflow-y-auto px-3 pb-6">
                     <NavList newMessages={newMessages} onNavigate={() => setOpen(false)} />
-                  </div>
+                  </nav>
                 </RadixDialog.Content>
               </RadixDialog.Portal>
             </RadixDialog.Root>

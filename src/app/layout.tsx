@@ -10,10 +10,13 @@ import { env } from "@/server/env";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+// Only small labels and dates use the monospace face: load it when needed rather
+// than preloading it alongside the page's main content.
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
   display: "swap",
+  preload: false,
 });
 
 // Every page is rendered per request: the CSP nonce and the theme cookie differ

@@ -265,7 +265,10 @@ export function ContentForm(props: ContentFormProps) {
         {errors.media && <Alert tone="danger" title={errors.media} />}
       </div>
 
-      <aside className="flex flex-col gap-4 xl:sticky xl:top-24 xl:self-start">
+      <aside
+        aria-label="Save and publish"
+        className="flex flex-col gap-4 xl:sticky xl:top-24 xl:self-start"
+      >
         <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-line bg-surface p-5">
           <Button
             type="submit"
