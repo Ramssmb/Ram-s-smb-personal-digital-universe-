@@ -32,9 +32,10 @@ characters to bound hashing cost.
 3. Same response for "no such user" and "wrong password".
 4. On success: create a new session (never reuse a pre-login token), set cookie,
    record `audit_log`.
-5. If TOTP is enabled, the session is created with `mfa_verified = false` and
-   can only call `/auth/totp` until verified (5 attempts, then the session is
-   revoked).
+5. If TOTP is enabled, **no session is created yet**: the password step returns
+   a signed, 5-minute sign-in ticket, and `/auth/totp` creates the session only
+   after a valid 6-digit code or recovery code (5 wrong codes per 15 minutes
+   per account, then locked). See §16.
 
 **Session cookie.** Name `__Host-session` (forces `Secure`, `Path=/`, no
 `Domain`). `HttpOnly`, `SameSite=Lax`. Value: 32 random bytes, base64url. The
@@ -119,8 +120,12 @@ links in Markdown get `rel="nofollow ugc noopener noreferrer"`.
 - Rate limit: 3 per 10 min and 10 per day per IP.
 - Optional Cloudflare Turnstile, off by default (privacy and a third-party
   script); can be switched on from settings if spam appears.
-- Messages stored first, then an email notification is sent; a mail failure
-  never loses a message.
+- Messages stored first, then an email notification is sent if SMTP is
+  configured; a mail failure never loses a message or shows an error to the
+  visitor. Spam never triggers an email. The visitor's address is only used as
+  Reply-To, and the subject is reduced to one line (no header injection).
+- Retention: messages flagged as spam are deleted after 30 days; other
+  messages are kept until the owner deletes them.
 
 ## 11. Secrets and configuration
 
@@ -128,15 +133,18 @@ links in Markdown get `rel="nofollow ugc noopener noreferrer"`.
 - None are prefixed `NEXT_PUBLIC_`; a CI check fails the build if the client
   bundle contains a known secret variable name or value pattern.
 - `.env*` files are git-ignored except `.env.example`.
-- Required secrets: `DATABASE_URL`, `SESSION_IP_HASH_KEY`, `TOTP_ENCRYPTION_KEY`,
-  `PREVIEW_TOKEN_KEY`, SMTP credentials, storage credentials (S3 mode).
+- Secrets as built: `DATABASE_URL` (and the migration URL), `APP_SECRET`
+  (one 32+ character secret; purpose-specific keys are derived from it with
+  HKDF / keyed hashes), and optionally `SMTP_URL` and `S3_SECRET_ACCESS_KEY`.
+  Startup errors name missing variables, never their values.
 
 ## 12. Logging and errors
 
 Structured JSON logs with a request id. Logged: method, path, status, duration,
 user id for admin requests. **Never logged:** passwords, cookies, tokens, full
-request bodies, contact message bodies. Unexpected errors are reported to error
-monitoring with the same request id and scrubbed of those fields.
+request bodies, contact message bodies, SQL query parameters. Unexpected errors
+are logged with the same request id; no external error-monitoring service is
+connected (DEPLOYMENT.md §10).
 
 ## 13. Privacy
 
@@ -164,13 +172,18 @@ Accepted development-only findings (reviewed 2026-11-01):
 
 Re-check both whenever ESLint or drizzle-kit is upgraded.
 
-## 15. As built (v0.2.0)
+## 15. As built (v0.4.0)
 
 Implemented and covered by tests (`tests/integration/*`, `tests/e2e/*`):
 everything in §2–§13 except the items below.
 
-- **Not implemented yet:** TOTP two-factor authentication; email notification
-  of contact messages; optional Cloudflare Turnstile; error-monitoring service.
+- **Not implemented:** optional Cloudflare Turnstile; error-monitoring service
+  (needs the owner's approval of a provider).
+- **Production configuration is checked at startup:** `SITE_URL` must be https
+  (localhost excepted, for smoke tests); S3 and SMTP settings must be complete
+  if used.
+- **Retention (hourly job):** expired sessions and rate-limit rows, audit log
+  entries older than 365 days, spam older than 30 days.
 - **Session cookie name:** `__Host-session` when `SITE_URL` is https, `session`
   on plain-http development (browsers refuse `__Host-` cookies without HTTPS).
 - **Client IP:** taken from `X-Forwarded-For` only when `TRUST_PROXY_HOPS` > 0;
@@ -181,3 +194,22 @@ everything in §2–§13 except the items below.
 - **Every admin API route** is discovered from the file system by
   `tests/integration/authorization.test.ts`, which proves 401 without a session
   and 403 for cross-site writes on every exported method.
+
+## 16. Two-factor authentication (TOTP)
+
+- Turned on from Admin → Account: enter the setup key (or open the `otpauth://`
+  link) in any authenticator app, confirm with a code. Confirming signs out
+  every other session and shows **10 recovery codes once**.
+- Standard RFC 6238 (SHA-1, 6 digits, 30 s, ±1 step for clock drift),
+  implemented with Node's `crypto`; verified against the RFC test vectors.
+- The secret is stored encrypted (AES-256-GCM, key derived from `APP_SECRET`);
+  recovery codes are stored as SHA-256 hashes and each works once. A code is
+  rejected if its time step was already used (no replay).
+- Turning it off needs the password **and** a code.
+- Lost phone and recovery codes: on the server, `npm run admin:create` with the
+  owner's email resets the password and turns 2FA off (requires server access).
+- If `APP_SECRET` changes, app codes stop working (logged as a warning);
+  recovery codes still do.
+- Sign-ins, failed passwords and codes, and 2FA changes are written to the audit log;
+  Admin → Account shows recent sign-in activity, and "Sign out all other sessions"
+  revokes every other session.

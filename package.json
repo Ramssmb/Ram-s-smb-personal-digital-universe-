@@ -1,7 +1,7 @@
 {
   "name": "personal-digital-universe",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -72,6 +72,9 @@
     "vitest": "5.0.5"
   },
   "overrides": {
-    "minimatch@10": "11.0.1"
+    "minimatch@10": "11.0.1",
+    "smtp-server": {
+      "nodemailer": "$nodemailer"
+    }
   }
 }

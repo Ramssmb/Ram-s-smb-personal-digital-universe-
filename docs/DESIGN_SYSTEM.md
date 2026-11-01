@@ -43,7 +43,7 @@ no flash.
 ## 3. Typography
 
 - **Sans:** Inter (variable, self-hosted via `next/font`, subset, `swap`).
-- **Mono:** JetBrains Mono, for code, dates in the timeline and technical labels.
+- **Mono:** the system monospace face (`ui-monospace`, Cascadia Code, SF Mono, Menlo, Consolas), for code, dates in the timeline and technical labels. No web font: measured, downloading one delayed the main content on mobile.
 - Scale (rem, 1.2 ratio, fluid with `clamp` on the two largest steps):
 
 | Token     | Size / line height                   | Use                  |

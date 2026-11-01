@@ -23,6 +23,7 @@ import {
 import { db } from "@/server/db/client";
 import { auditLog, users } from "@/server/db/schema";
 import { AppError } from "@/server/http/errors";
+import { logger } from "@/server/logger";
 import { clientIpHash } from "@/server/security/client-ip";
 import { keyedHash, safeEqual } from "@/server/security/crypto";
 import { enforce, hit, isLimited, RULES } from "@/server/security/rate-limit";
@@ -121,7 +122,16 @@ async function checkSecondFactor(
 ): Promise<"totp" | "recovery" | null> {
   if (!user.totpSecret) return null;
   if (/^\d{6}$/.test(code)) {
-    const step = matchingStep(decryptSecret(user.totpSecret), code);
+    let secret: string;
+    try {
+      secret = decryptSecret(user.totpSecret);
+    } catch {
+      // APP_SECRET changed since enrolment: authenticator codes can no longer be
+      // checked, but recovery codes (plain hashes) still work.
+      logger.warn("stored TOTP secret cannot be decrypted; was APP_SECRET changed?");
+      return null;
+    }
+    const step = matchingStep(secret, code);
     if (step === null || (user.totpLastStep !== null && step <= user.totpLastStep)) return null;
     await db().update(users).set({ totpLastStep: step }).where(eq(users.id, user.id));
     return "totp";

@@ -2,6 +2,55 @@
 
 All notable changes to this project. Dates are UTC.
 
+## [0.4.0] — 2026-11-01
+
+Production readiness. Nothing was deployed, bought or registered.
+
+### Added
+
+- **Two-factor authentication (TOTP)** with 10 single-use recovery codes, replay
+  protection, a 5-attempt lockout, encrypted secrets, and sign-in activity on
+  the Account page. The password step no longer creates a session when 2FA is
+  on; a signed 5-minute ticket carries it to the code step.
+- **S3-compatible media storage** (`STORAGE_DRIVER=s3`), tested in CI against
+  SeaweedFS with signature checking. Local disk stays the default.
+- **Contact email notifications** over any SMTP provider (`SMTP_URL`), off by
+  default. Messages are stored first; failures are logged and never reach the
+  visitor; spam never sends mail.
+- **Database restore script** (`infra/backup/restore.sh`): test restores into a
+  separate database with a row-count comparison, or disaster recovery over the
+  live database (with `RESTORE_OVERWRITE=yes`).
+- **Backup and restore in CI:** the production smoke test now backs up,
+  restores into a separate database and performs a full disaster recovery.
+- **Hourly data retention:** expired sessions and rate-limit rows, audit log
+  entries over 365 days and spam over 30 days are deleted (`npm run maintenance`).
+- docs/CONTENT_GUIDE.md (what the owner must enter), and in
+  docs/DEPLOYMENT.md a launch checklist, storage/email/monitoring options and
+  the tested recovery procedure.
+
+### Fixed
+
+- `backup.sh` could not write the media archive (the container user had no
+  access to the host directory).
+- The documented restore made the tables owned by `postgres`, so later
+  migrations would have failed. Restores now create objects as `site_owner`.
+- Production accepted a plain-http `SITE_URL`.
+- Empty environment variables from Compose (`VAR=`) failed validation instead
+  of meaning "not set".
+- If `APP_SECRET` changed, an authenticator code caused a server error; it is
+  now rejected cleanly and recovery codes still work.
+- Docker logs had no size limit; every service now rotates at 10 MB × 5.
+
+### Changed
+
+- Monospace text uses the system monospace font instead of downloading
+  JetBrains Mono: simulated mobile LCP on /skills and /search fell from about
+  3.0 s to 0.64 s, and on the home page from 3.16 s to 2.84 s.
+- nodemailer 10.1.4 (address-parser advisories fixed); the test SMTP server
+  is pinned to the same version through an override.
+- CI's S3 tests use SeaweedFS (LocalStack's image no longer starts without an
+  account token).
+
 ## [0.3.0] — 2026-11-01
 
 ### Added

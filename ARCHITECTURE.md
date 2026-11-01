@@ -226,14 +226,14 @@ documents every variable without real values.
 
 ## 6. Decisions log
 
-| #                | Date       | Decision                | Status                                                 |
-| ---------------- | ---------- | ----------------------- | ------------------------------------------------------ |
-| D1–D13           | 2026-11-01 | As above                | Approved by owner (Phase 1 review)                     |
-| D10 revision     | 2026-11-01 | Per-request rendering   | Phase 3: required by the nonce CSP                     |
-| Hosting          | 2026-11-01 | VPS + Docker + Caddy    | Supported target; managed hosting needs the S3 adapter |
-| Display identity | —          | Name and content source | Open — content stays unpublished until provided        |
+| #                | Date       | Decision                | Status                                                  |
+| ---------------- | ---------- | ----------------------- | ------------------------------------------------------- |
+| D1–D13           | 2026-11-01 | As above                | Approved by owner (Phase 1 review)                      |
+| D10 revision     | 2026-11-01 | Per-request rendering   | Phase 3: required by the nonce CSP                      |
+| Hosting          | 2026-11-01 | VPS + Docker + Caddy    | Tested target; managed hosting possible with S3 storage |
+| Display identity | —          | Name and content source | Open — content stays unpublished until provided         |
 
-## 7. Implementation notes (v0.2.0)
+## 7. Implementation notes (v0.4.0)
 
 How the build differs from — or makes concrete — the Phase 2 design. Each
 point was decided during implementation; the docs in `docs/` carry matching notes.
@@ -248,7 +248,7 @@ point was decided during implementation; the docs in `docs/` carry matching note
 | Pagination          | Offset (`?page=`) for public and admin lists.                                                                                                                                                                                                                                        | Lists are small; page links are shareable. Cursor pagination is unnecessary at this size.                                                  |
 | Education           | Coursework is a list on the education entry; academic milestones are achievements of kind "academic".                                                                                                                                                                                | Avoids two tables with no independent lifecycle.                                                                                           |
 | Categories          | One `categories` table with a `scope` (skill, project, resource).                                                                                                                                                                                                                    | One management screen for all groupings.                                                                                                   |
-| Media storage       | Local disk only (`STORAGE_DIR`, a Docker volume in production).                                                                                                                                                                                                                      | The VPS deployment is the supported target; the S3 adapter is a documented follow-up.                                                      |
-| 2FA (TOTP)          | Not implemented.                                                                                                                                                                                                                                                                     | Password + rate limits + revocable sessions ship first; TOTP is a documented follow-up.                                                    |
-| Email notifications | Not implemented; messages are stored and shown in the dashboard inbox.                                                                                                                                                                                                               | Avoids an SMTP dependency until the owner chooses a provider.                                                                              |
+| Media storage       | Driver chosen by `STORAGE_DRIVER`: local disk (`STORAGE_DIR`, a Docker volume in production) or any S3-compatible bucket (aws4fetch, SigV4, path-style). Files are always served through the app.                                                                                    | Local works on one VPS at no extra cost; S3 allows hosts without a persistent disk. Provider left to the owner.                            |
+| 2FA (TOTP)          | Optional RFC 6238 TOTP with recovery codes; password step issues a short-lived signed ticket, the session is created after the second factor (docs/AUTH_AND_SECURITY.md §16).                                                                                                        | No extra dependency (Node crypto); no half-authenticated sessions to guard.                                                                |
+| Email notifications | Optional SMTP (nodemailer) configured by `SMTP_URL`; off when unset. Messages are always stored first.                                                                                                                                                                               | Works with any provider without code changes; no provider assumed.                                                                         |
 | Hosting             | Single VPS with Docker Compose and Caddy (docs/DEPLOYMENT.md).                                                                                                                                                                                                                       | Resolves the open hosting decision in favour of the option the code fully supports.                                                        |

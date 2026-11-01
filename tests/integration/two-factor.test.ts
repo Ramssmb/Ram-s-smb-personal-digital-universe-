@@ -106,6 +106,16 @@ describe("two-factor authentication", () => {
     expect(row?.recovery_codes).toHaveLength(9);
   });
 
+  it("after an APP_SECRET change, app codes fail cleanly and recovery codes still work", async () => {
+    const { secret, recoveryCodes } = await enable();
+    // Same effect as a new APP_SECRET: the stored secret no longer decrypts.
+    await ownerSql`UPDATE users SET totp_secret = 'AAAAAAAAAAAAAAAA.AAAAAAAAAAAAAAAAAAAAAA.AAAA'
+      WHERE id = ${admin.id}`;
+    const { ticket } = await (await signIn()).json();
+    expect((await verify(ticket, codeAt(secret, currentStep()))).status).toBe(401);
+    expect((await verify(ticket, recoveryCodes[0]!)).status).toBe(200);
+  });
+
   it("rejects forged and expired tickets", async () => {
     const { secret } = await enable();
     const code = codeAt(secret, currentStep());
