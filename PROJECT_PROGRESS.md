@@ -75,8 +75,10 @@ The CI `docker` job runs on the real production images: upload an image →
 separate database `personal_site_restore_check` (row counts match the live
 database, tables owned by `site_owner`, `site_app` can read) → add a message →
 restore over the live database → the message is gone, the site is healthy,
-sign-in works, the image is served, migrations run. First passed on `5fb7d4b`.
-Not yet run on a real server.
+sign-in works, the image is served, migrations run → all media files deleted
+and restored from the archive with identical SHA-256 checksums. Database steps
+first passed on `5fb7d4b`, the media checksum step on `e8fc6c7`. Not yet run on
+a real server.
 
 ### Lighthouse (2026-11-01, production build on localhost, mobile, simulated slow 4G, headless Edge)
 

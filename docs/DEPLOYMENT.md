@@ -205,10 +205,15 @@ image → back up → check the media archive contains it → restore into the
 separate check database (row counts match, `site_app` can read it) → add a
 contact message → restore over the live database → the message is gone, the
 site is healthy, sign-in works, the image is served, and `migrate` runs on the
-restored database → delete the image from the media volume → restore it with
-the media command above → it is served again. Database steps first passed on
-commit `5fb7d4b` (2026-11-01); the media step was added afterwards (see
-CHANGELOG.md).
+restored database → delete **every** stored media file (the image and its
+resized variant) → restore with the media command above → every file has the
+same SHA-256 checksum as before, and the served image is byte-identical.
+Database steps first passed on commit `5fb7d4b`; the media step with checksum
+comparison on `e8fc6c7` (2026-11-01). CI publishes the media result as a
+"Media restore verified" annotation on the smoke-test job.
+
+Not yet tested: a restore on a real server, and a restore into a fresh server
+from an off-site copy.
 
 ## 9. Contact form email notifications
 

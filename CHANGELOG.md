@@ -12,8 +12,10 @@ All notable changes to this project. Dates are UTC.
 
 ### Added
 
-- The production smoke test deletes an uploaded image and restores it from the
-  media backup, so media recovery is tested in CI like the database.
+- The production smoke test deletes every stored media file, restores the media
+  backup, and requires identical SHA-256 checksums for every file and a
+  byte-identical served image, so media recovery is tested in CI like the
+  database. The result is published as a CI annotation.
 - docs/DEPLOYMENT_PREPARATION.md: costs, decisions and order of work before
   deploying.
 
