@@ -133,6 +133,10 @@ test "$(checksums)" = "$before" || fail "restored media files differ from the or
 test "$("${CURL[@]}" "$BASE/media/$key" | sha256sum)" = "$served_before" \
   || fail "the restored image is not served with its original content"
 echo "restored $(wc -l <<<"$before") files with identical checksums"
+# In CI, also publish the evidence as an annotation (readable without signing in).
+if [ -n "${GITHUB_ACTIONS:-}" ]; then
+  echo "::notice title=Media restore verified::$(wc -l <<<"$before") files deleted and restored with identical SHA-256 checksums; served image identical.%0A$(awk 'BEGIN{ORS="%0A"} {print}' <<<"$before")"
+fi
 rm -rf "$BACKUP_DIR"
 
 step "The app shuts down gracefully"
