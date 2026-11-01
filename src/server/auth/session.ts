@@ -131,8 +131,7 @@ export async function listActiveSessions(userId: string) {
     .orderBy(sessions.lastSeenAt);
 }
 
+/** Deletes expired sessions; they can never be used again. */
 export async function pruneSessions(): Promise<void> {
-  await db()
-    .delete(sessions)
-    .where(lt(sessions.expiresAt, new Date(Date.now() - ABSOLUTE_MS)));
+  await db().delete(sessions).where(lt(sessions.expiresAt, new Date()));
 }

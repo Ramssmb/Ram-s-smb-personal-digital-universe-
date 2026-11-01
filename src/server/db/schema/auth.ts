@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   check,
   index,
   integer,
@@ -24,6 +25,15 @@ export const users = pgTable(
     role: userRole().notNull().default("owner"),
     passwordChangedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     lastLoginAt: timestamp({ withTimezone: true }),
+    /** Two-factor authentication. Secrets are AES-256-GCM encrypted (src/server/auth/totp.ts). */
+    totpSecret: text(),
+    /** Secret shown during setup, until the first code confirms it. */
+    totpPendingSecret: text(),
+    totpEnabledAt: timestamp({ withTimezone: true }),
+    /** Last accepted 30-second step: a code cannot be used twice. */
+    totpLastStep: bigint({ mode: "number" }),
+    /** SHA-256 hashes of unused recovery codes. */
+    recoveryCodes: jsonb().$type<string[]>().notNull().default([]),
     ...timestamps(),
   },
   (t) => [check("users_email_lowercase", sql`${t.email} = lower(${t.email})`)],

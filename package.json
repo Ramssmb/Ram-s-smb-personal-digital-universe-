@@ -20,7 +20,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file-if-exists=.env scripts/migrate.ts",
     "admin:create": "tsx --env-file-if-exists=.env --conditions=react-server scripts/admin.ts",
-    "db:seed": "tsx --env-file-if-exists=.env --conditions=react-server scripts/seed.ts"
+    "db:seed": "tsx --env-file-if-exists=.env --conditions=react-server scripts/seed.ts",
+    "maintenance": "tsx --env-file-if-exists=.env --conditions=react-server scripts/maintenance.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "2.2.2",

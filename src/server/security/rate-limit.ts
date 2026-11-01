@@ -60,6 +60,7 @@ export async function pruneRateLimits(): Promise<void> {
 export const RULES = {
   loginFailuresPerIp: { name: "login-fail-ip", limit: 5, windowSeconds: 15 * 60 },
   loginFailuresPerAccount: { name: "login-fail-account", limit: 10, windowSeconds: 60 * 60 },
+  totpFailuresPerUser: { name: "totp-fail-user", limit: 5, windowSeconds: 15 * 60 },
   contactPerIpShort: { name: "contact-ip-10m", limit: 3, windowSeconds: 10 * 60 },
   contactPerIpDay: { name: "contact-ip-day", limit: 10, windowSeconds: 24 * 60 * 60 },
   searchPerIp: { name: "search-ip", limit: 60, windowSeconds: 60 },

@@ -1,3 +1,6 @@
+import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import sharp from "sharp";
@@ -422,4 +425,70 @@ test("the sign-in page is accessible", async ({ browser }) => {
   await page.goto("/admin/login");
   await expectNoAxeViolations(page);
   await anon.close();
+});
+
+/** RFC 6238 code for a base32 secret (standalone: tests cannot import server-only code). */
+function totp(secret: string, offsetSteps = 0): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = 0;
+  let value = 0;
+  const bytes: number[] = [];
+  for (const char of secret.replace(/=+$/, "")) {
+    value = (value << 5) | alphabet.indexOf(char);
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30_000) + offsetSteps));
+  const hmac = createHmac("sha1", Buffer.from(bytes)).update(counter).digest();
+  const offset = hmac[hmac.length - 1]! & 15;
+  return String((hmac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
+}
+
+test("two-factor authentication: set up, sign in with a code, turn off", async ({
+  browser,
+  page,
+}) => {
+  const { email, password } = JSON.parse(readFileSync("playwright/.auth/credentials.json", "utf8"));
+  await page.goto("/admin/account");
+  await page.getByRole("button", { name: "Set up two-factor authentication" }).click();
+  const secret = (await page.getByLabel("Setup key").textContent())!.trim();
+  await page.getByLabel("Code from the app").fill(totp(secret, -1));
+  await page.getByRole("button", { name: "Turn on" }).click();
+  await expect(page.getByText("Two-factor authentication is on.")).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Recovery codes" }).getByRole("listitem"),
+  ).toHaveCount(10);
+  await page.getByRole("button", { name: "I have saved them" }).click();
+
+  // A new browser must give a code after the password.
+  const fresh = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  const tab = await fresh.newPage();
+  await tab.goto("/admin/login");
+  await tab.getByLabel("Email").fill(email);
+  await tab.getByLabel("Password").fill(password);
+  await tab.getByRole("button", { name: "Sign in" }).click();
+  await tab.getByLabel("Authentication code").fill("000000");
+  await tab.getByRole("button", { name: "Verify" }).click();
+  await expect(tab.getByText("That code is not valid.")).toBeVisible();
+  await tab.getByLabel("Authentication code").fill(totp(secret));
+  await tab.getByRole("button", { name: "Verify" }).click();
+  await expect(tab.getByRole("heading", { name: "Overview" })).toBeVisible();
+  await tab.goto("/admin/account");
+  await expect(tab.getByText(/Signed in \(password \+ totp\)/).first()).toBeVisible();
+  await fresh.close();
+
+  // Turn it off again so later tests sign in with the password alone.
+  await page.goto("/admin/account");
+  const panel = page.getByRole("region", { name: "Two-factor authentication" });
+  await panel.getByText("Turn two-factor authentication off").click();
+  await panel.getByLabel("Password").fill(password);
+  await panel.getByLabel("Code from the app or a recovery code").fill(totp(secret, 1));
+  await panel.getByRole("button", { name: "Turn off", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Set up two-factor authentication" }),
+  ).toBeVisible();
 });

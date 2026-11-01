@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -11,11 +11,20 @@ import {
   verifyPassword,
 } from "@/server/auth/password";
 import { createSession, revokeOtherSessions } from "@/server/auth/session";
+import {
+  decryptSecret,
+  encryptSecret,
+  generateRecoveryCodes,
+  generateSecret,
+  hashRecoveryCode,
+  matchingStep,
+  otpauthUri,
+} from "@/server/auth/totp";
 import { db } from "@/server/db/client";
-import { users } from "@/server/db/schema";
+import { auditLog, users } from "@/server/db/schema";
 import { AppError } from "@/server/http/errors";
 import { clientIpHash } from "@/server/security/client-ip";
-import { keyedHash } from "@/server/security/crypto";
+import { keyedHash, safeEqual } from "@/server/security/crypto";
 import { enforce, hit, isLimited, RULES } from "@/server/security/rate-limit";
 
 import { audit } from "./audit";
@@ -57,10 +66,206 @@ export async function login(input: unknown, headers: Headers) {
     throw new AppError("unauthenticated", GENERIC_FAILURE);
   }
 
-  await db().update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
-  const session = await createSession(user.id, { ipHash, userAgent: headers.get("user-agent") });
-  await audit({ userId: user.id, action: "login" });
-  return { user: { id: user.id, email: user.email }, ...session };
+  if (user.totpEnabledAt) {
+    // Password was right; the session is only created after the second factor.
+    await audit({ userId: user.id, action: "login_password_ok" });
+    return { mfaRequired: true as const, ticket: issueMfaTicket(user.id) };
+  }
+  return {
+    mfaRequired: false as const,
+    ...(await startSession(user.id, user.email, headers, "password")),
+  };
+}
+
+async function startSession(userId: string, email: string, headers: Headers, method: string) {
+  await db().update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
+  const session = await createSession(userId, {
+    ipHash: clientIpHash(headers),
+    userAgent: headers.get("user-agent"),
+  });
+  await audit({ userId, action: "login", summary: { method } });
+  return { user: { id: userId, email }, ...session };
+}
+
+// ---------------------------------------------------------------- two-factor sign-in
+
+const MFA_TICKET_MS = 5 * 60 * 1000;
+
+/** Proves the password step succeeded for this user in the last five minutes. */
+function issueMfaTicket(userId: string, now = Date.now()): string {
+  const payload = `${userId}.${now + MFA_TICKET_MS}`;
+  return `${payload}.${keyedHash("mfa-ticket", payload)}`;
+}
+
+function readMfaTicket(ticket: string, now = Date.now()): string | null {
+  const parts = ticket.split(".");
+  if (parts.length !== 3) return null;
+  const [userId, expires, signature] = parts as [string, string, string];
+  if (!safeEqual(signature, keyedHash("mfa-ticket", `${userId}.${expires}`))) return null;
+  if (!/^\d+$/.test(expires) || Number(expires) < now) return null;
+  return userId;
+}
+
+export const secondFactorSchema = z.object({
+  ticket: z.string().min(1).max(200),
+  code: z.string().trim().min(6).max(20),
+});
+
+/**
+ * Checks a 6-digit code (each one usable once) or a recovery code (consumed
+ * on use). Returns how the factor was satisfied, or null.
+ */
+async function checkSecondFactor(
+  user: typeof users.$inferSelect,
+  code: string,
+): Promise<"totp" | "recovery" | null> {
+  if (!user.totpSecret) return null;
+  if (/^\d{6}$/.test(code)) {
+    const step = matchingStep(decryptSecret(user.totpSecret), code);
+    if (step === null || (user.totpLastStep !== null && step <= user.totpLastStep)) return null;
+    await db().update(users).set({ totpLastStep: step }).where(eq(users.id, user.id));
+    return "totp";
+  }
+  const hash = hashRecoveryCode(code);
+  if (!user.recoveryCodes.includes(hash)) return null;
+  await db()
+    .update(users)
+    .set({ recoveryCodes: user.recoveryCodes.filter((h) => h !== hash), updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+  return "recovery";
+}
+
+export async function completeSecondFactor(input: unknown, headers: Headers) {
+  const { ticket, code } = secondFactorSchema.parse(input);
+  const userId = readMfaTicket(ticket);
+  if (!userId) throw new AppError("unauthenticated", "The sign-in attempt expired. Start again.");
+  if (await isLimited(RULES.totpFailuresPerUser, userId)) {
+    throw new AppError("rate_limited", "Too many wrong codes. Try again later.");
+  }
+  const [user] = await db().select().from(users).where(eq(users.id, userId)).limit(1);
+  const method = user ? await checkSecondFactor(user, code) : null;
+  if (!user || !method) {
+    await hit(RULES.totpFailuresPerUser, userId);
+    await audit({ userId: user?.id ?? null, action: "login_failed", summary: { step: "2fa" } });
+    throw new AppError("unauthenticated", "That code is not valid.");
+  }
+  return startSession(
+    user.id,
+    user.email,
+    headers,
+    method === "totp" ? "password+totp" : "password+recovery",
+  );
+}
+
+// ---------------------------------------------------------------- two-factor setup
+
+/** Starts setup: a new secret is stored (encrypted) as pending until a code confirms it. */
+export async function beginTotpSetup(userId: string, email: string) {
+  const secret = generateSecret();
+  await db()
+    .update(users)
+    .set({ totpPendingSecret: encryptSecret(secret), updatedAt: new Date() })
+    .where(eq(users.id, userId));
+  return { secret, uri: otpauthUri(secret, email, "Personal site") };
+}
+
+/**
+ * Turns 2FA on once a code from the app proves the secret was saved. Returns
+ * the recovery codes (shown once). Other sessions, which never passed 2FA, are
+ * signed out.
+ */
+export async function confirmTotpSetup(userId: string, sessionId: string, input: unknown) {
+  const { code } = z.object({ code: z.string().trim() }).parse(input);
+  await enforce(RULES.totpFailuresPerUser, `setup:${userId}`);
+  const [user] = await db().select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user?.totpPendingSecret) {
+    throw new AppError("validation_failed", "Start the setup again.");
+  }
+  const secret = decryptSecret(user.totpPendingSecret);
+  const step = matchingStep(secret, code);
+  if (step === null) {
+    throw new AppError("validation_failed", undefined, {
+      code: "That code is not valid. Check the time on your phone.",
+    });
+  }
+  const recoveryCodes = generateRecoveryCodes();
+  await db()
+    .update(users)
+    .set({
+      totpSecret: user.totpPendingSecret,
+      totpPendingSecret: null,
+      totpEnabledAt: new Date(),
+      totpLastStep: step,
+      recoveryCodes: recoveryCodes.map(hashRecoveryCode),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+  await revokeOtherSessions(userId, sessionId);
+  await audit({ userId, action: "totp_enabled" });
+  return { recoveryCodes };
+}
+
+/** Turns 2FA off. Needs the password and a current (or recovery) code. */
+export async function disableTotp(userId: string, input: unknown) {
+  const { password, code } = z
+    .object({
+      password: z.string().min(1).max(PASSWORD_MAX),
+      code: z.string().trim().min(6).max(20),
+    })
+    .parse(input);
+  await enforce(RULES.totpFailuresPerUser, `disable:${userId}`);
+  const [user] = await db().select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user?.totpEnabledAt)
+    throw new AppError("validation_failed", "Two-factor authentication is not on.");
+  if (!(await verifyPassword(user.passwordHash, password))) {
+    throw new AppError("validation_failed", undefined, { password: "The password is incorrect." });
+  }
+  if (!(await checkSecondFactor(user, code))) {
+    throw new AppError("validation_failed", undefined, { code: "That code is not valid." });
+  }
+  await db()
+    .update(users)
+    .set({ ...TOTP_OFF, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+  await audit({ userId, action: "totp_disabled" });
+}
+
+const TOTP_OFF = {
+  totpSecret: null,
+  totpPendingSecret: null,
+  totpEnabledAt: null,
+  totpLastStep: null,
+  recoveryCodes: [] as string[],
+};
+
+export async function twoFactorStatus(userId: string) {
+  const [user] = await db()
+    .select({ enabledAt: users.totpEnabledAt, recoveryCodes: users.recoveryCodes })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return { enabledAt: user?.enabledAt ?? null, recoveryCodesLeft: user?.recoveryCodes.length ?? 0 };
+}
+
+const SIGN_IN_ACTIONS = [
+  "login",
+  "login_failed",
+  "logout",
+  "password_change",
+  "password_reset_cli",
+  "totp_enabled",
+  "totp_disabled",
+  "sign_out_others",
+];
+
+/** Recent account-security events for the Account page. */
+export async function recentSignInActivity(userId: string, limit = 20) {
+  return db()
+    .select({ action: auditLog.action, summary: auditLog.summary, createdAt: auditLog.createdAt })
+    .from(auditLog)
+    .where(and(eq(auditLog.userId, userId), inArray(auditLog.action, SIGN_IN_ACTIONS)))
+    .orderBy(desc(auditLog.createdAt))
+    .limit(limit);
 }
 
 export const changePasswordSchema = z.object({
@@ -123,7 +328,9 @@ export async function upsertOwner(
   if (existing) {
     await db()
       .update(users)
-      .set({ passwordHash, passwordChangedAt: new Date(), updatedAt: new Date() })
+      // Also turns two-factor authentication off: this is the recovery path for a
+      // lost phone, and it needs access to the server.
+      .set({ passwordHash, passwordChangedAt: new Date(), updatedAt: new Date(), ...TOTP_OFF })
       .where(eq(users.id, existing.id));
     await revokeOtherSessions(existing.id, null);
     await audit({ userId: existing.id, action: "password_reset_cli" });

@@ -29,7 +29,12 @@ export async function api<T = unknown>(
   } catch {
     throw new ApiError("Could not reach the server. Check your connection.", 0, "network");
   }
-  if (response.status === 401 && typeof window !== "undefined" && !path.includes("/auth/login")) {
+  // Sign-in endpoints answer 401 for a wrong password or code: show that error, do not redirect.
+  if (
+    response.status === 401 &&
+    typeof window !== "undefined" &&
+    !path.startsWith("/api/v1/auth/")
+  ) {
     // Outside React (no router here): a full navigation also drops any stale client state.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign(`/admin/login?next=${encodeURIComponent(window.location.pathname)}`);

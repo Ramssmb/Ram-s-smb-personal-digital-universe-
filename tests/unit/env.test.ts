@@ -56,3 +56,71 @@ describe("parseServerEnv", () => {
     }
   });
 });
+
+describe("production and optional-feature rules", () => {
+  it("requires https in production, except on localhost", () => {
+    expect(() =>
+      parseServerEnv({ ...valid, NODE_ENV: "production", SITE_URL: "http://example.test" }),
+    ).toThrow(/SITE_URL: must use https/);
+    expect(
+      parseServerEnv({ ...valid, NODE_ENV: "production", SITE_URL: "http://localhost:3100" })
+        .SITE_URL,
+    ).toBe("http://localhost:3100");
+    expect(
+      parseServerEnv({ ...valid, NODE_ENV: "production", SITE_URL: "https://example.test" })
+        .SITE_URL,
+    ).toBe("https://example.test");
+  });
+
+  it("treats empty values as unset (Docker Compose passes unset variables as empty)", () => {
+    const env = parseServerEnv({ ...valid, SMTP_URL: "", S3_ENDPOINT: " ", STORAGE_DRIVER: "" });
+    expect(env.SMTP_URL).toBeUndefined();
+    expect(env.STORAGE_DRIVER).toBe("local");
+  });
+
+  it("requires every S3 setting when the S3 driver is chosen", () => {
+    expect(() => parseServerEnv({ ...valid, STORAGE_DRIVER: "s3" })).toThrow(
+      /S3_ENDPOINT[\s\S]*S3_BUCKET[\s\S]*S3_ACCESS_KEY_ID[\s\S]*S3_SECRET_ACCESS_KEY/,
+    );
+    const s3 = {
+      ...valid,
+      STORAGE_DRIVER: "s3",
+      S3_ENDPOINT: "https://s3.example.test",
+      S3_BUCKET: "media",
+      S3_ACCESS_KEY_ID: "id",
+      S3_SECRET_ACCESS_KEY: "secret",
+    };
+    expect(parseServerEnv(s3).S3_REGION).toBe("auto");
+    expect(() =>
+      parseServerEnv({
+        ...s3,
+        NODE_ENV: "production",
+        SITE_URL: "https://x.test",
+        S3_ENDPOINT: "http://s3.example.test",
+      }),
+    ).toThrow(/S3_ENDPOINT: must use https/);
+  });
+
+  it("requires a sender and recipient when email notifications are configured", () => {
+    expect(() =>
+      parseServerEnv({ ...valid, SMTP_URL: "smtps://u:p@mail.example.test:465" }),
+    ).toThrow(/SMTP_FROM[\s\S]*CONTACT_NOTIFY_TO/);
+    expect(() =>
+      parseServerEnv({
+        ...valid,
+        SMTP_URL: "http://mail.example.test",
+        SMTP_FROM: "Site <site@example.test>",
+        CONTACT_NOTIFY_TO: "me@example.test",
+      }),
+    ).toThrow(/SMTP_URL: must start with smtp/);
+  });
+
+  it("never echoes an SMTP password in errors", () => {
+    try {
+      parseServerEnv({ ...valid, SMTP_URL: "smtps://user:VERY-SECRET-PW@mail.example.test" });
+      expect.unreachable();
+    } catch (error) {
+      expect(String((error as Error).message)).not.toContain("VERY-SECRET-PW");
+    }
+  });
+});

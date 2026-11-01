@@ -8,8 +8,16 @@
 
 name: personal-site
 
+# Rotate container logs (Docker keeps them forever by default and can fill the disk).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
+    logging: *logging
     image: postgres:17-alpine
     restart: unless-stopped
     # Give PostgreSQL time to checkpoint and shut down cleanly.
@@ -32,6 +40,7 @@ services:
 
   # Applies migrations, then exits. The app starts only after it succeeded.
   migrate:
+    logging: *logging
     build: { context: ., target: tools }
     environment:
       MIGRATION_DATABASE_URL: postgres://site_owner:${DB_OWNER_PASSWORD}@db:5432/personal_site
@@ -42,6 +51,7 @@ services:
 
   # One-off administration: docker compose -f docker-compose.prod.yml run --rm tools npm run admin:create
   tools:
+    logging: *logging
     build: { context: ., target: tools }
     profiles: [tools]
     environment:
@@ -54,6 +64,7 @@ services:
     networks: [backend]
 
   app:
+    logging: *logging
     build: { context: ., target: runner }
     restart: unless-stopped
     # A real init as PID 1 forwards SIGTERM to Node and reaps child processes.
@@ -65,6 +76,17 @@ services:
       APP_SECRET: ${APP_SECRET:?set APP_SECRET}
       TRUST_PROXY_HOPS: "1"
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Optional: S3-compatible media storage (docs/DEPLOYMENT.md §7). Default: the media volume.
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-auto}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      # Optional: email notification for contact messages. Unset = off.
+      SMTP_URL: ${SMTP_URL:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      CONTACT_NOTIFY_TO: ${CONTACT_NOTIFY_TO:-}
     volumes:
       - media:/data/storage
     depends_on:
@@ -77,6 +99,7 @@ services:
     networks: [backend, frontend]
 
   caddy:
+    logging: *logging
     image: caddy:2.10-alpine
     restart: unless-stopped
     ports:
