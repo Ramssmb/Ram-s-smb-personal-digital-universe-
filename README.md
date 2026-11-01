@@ -1,4 +1,4 @@
-# Ram's SMB — Personal Digital Universe
+# Ram's Smb — Personal Digital Universe
 
 A full-scale personal digital platform showcasing my education, skills,
 projects, achievements, experience, daily learning journey and professional
