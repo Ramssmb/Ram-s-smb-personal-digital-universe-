@@ -2,6 +2,38 @@
 
 All notable changes to this project. Dates are UTC.
 
+## [0.3.0] — 2026-11-01
+
+### Added
+
+- **Journal attachments:** a journal entry's file list accepts PDFs as well as
+  images; images render in the entry, PDFs are listed under "Attachments".
+  Publishing is refused if any listed file is private.
+- **Related certificates on the Skills page:** each skill lists the published
+  certifications linked to it, next to the projects that use it.
+- **Email links on the Links page:** a link can be `mailto:address`. Extra
+  `mailto` parameters (`?cc=`, `?body=`, …) are rejected; email links do not
+  open a new tab and show the address.
+- **Replace a media file** (`PUT /api/v1/admin/media/:id/file`, "Replace file"
+  in the library): the item keeps its id, alt text and access, so every page
+  using it shows the new file; new storage keys bust the immutable cache and
+  the old files are deleted. Images can only be replaced by images and PDFs by
+  PDFs, with the same validation as uploads.
+
+### Fixed
+
+- Inline links inside sentences ("Used in …", "Subscribe via RSS") are
+  underlined so they are not distinguished by colour alone (WCAG 1.4.1).
+- Skill category sections were unlabelled for screen readers when the category
+  name contained a space (`aria-labelledby` ids cannot contain spaces).
+- Creating a category or tag no longer says "Draft created … publish it": those
+  are live immediately, and the button now reads "Create".
+
+### Changed
+
+- CI uploads Playwright reports with `actions/upload-artifact@v7` (Node.js 24).
+- Upload and replace share one validation path (`readUploadForm`, `storeFile`).
+
 ## [0.2.2] — 2026-11-01
 
 ### Fixed

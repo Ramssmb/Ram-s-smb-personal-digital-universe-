@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { safeExternalUrl } from "@/lib/safe-url";
+import { safeExternalUrl, safeMailto } from "@/lib/safe-url";
 
 /**
  * Field definitions drive three things from one place: the admin form, the
@@ -27,7 +27,15 @@ export type FieldDef =
       rows?: number;
     }
   | { kind: "markdown"; name: string; label: string; max?: number; hint?: string; rows?: number }
-  | { kind: "url"; name: string; label: string; required?: boolean; hint?: string }
+  | {
+      kind: "url";
+      name: string;
+      label: string;
+      required?: boolean;
+      hint?: string;
+      /** Also accept `mailto:address` (Links only). */
+      allowEmail?: boolean;
+    }
   | { kind: "email"; name: string; label: string; hint?: string }
   | { kind: "date"; name: string; label: string; required?: boolean; hint?: string }
   | { kind: "integer"; name: string; label: string; min: number; max: number; hint?: string }
@@ -57,7 +65,14 @@ export type FieldDef =
       accept: "image" | "document" | "any";
       hint?: string;
     }
-  | { kind: "media-many"; name: string; label: string; accept: "image"; hint?: string };
+  | {
+      kind: "media-many";
+      name: string;
+      label: string;
+      /** "any" also accepts PDFs, which public pages list as attachments. */
+      accept: "image" | "any";
+      hint?: string;
+    };
 
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -85,6 +100,16 @@ export const urlSchema = z
   .max(2000)
   .refine((value) => safeExternalUrl(value) !== null, "Enter a full http:// or https:// address.")
   .transform((value) => safeExternalUrl(value)!);
+
+const urlOrMailtoSchema = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine(
+    (value) => safeExternalUrl(value) !== null || safeMailto(value) !== null,
+    "Enter a full https:// address or mailto:name@example.com.",
+  )
+  .transform((value) => safeExternalUrl(value) ?? safeMailto(value)!);
 
 const validDate = z
   .string()
@@ -125,10 +150,10 @@ function fieldSchema(field: FieldDef): z.ZodType {
         .max(field.max ?? 50_000)
         .optional()
         .default("");
-    case "url":
-      return field.required
-        ? urlSchema
-        : z.preprocess(blankToNull, urlSchema.nullable()).optional();
+    case "url": {
+      const schema = field.allowEmail ? urlOrMailtoSchema : urlSchema;
+      return field.required ? schema : z.preprocess(blankToNull, schema.nullable()).optional();
+    }
     case "email":
       return z
         .preprocess(blankToNull, z.string().trim().toLowerCase().email().max(254).nullable())

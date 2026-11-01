@@ -272,10 +272,12 @@ export function MediaField({
 
 /** Ordered list of images (screenshots, journal images). */
 export function MediaListField({
+  accept = "image",
   value,
   media,
   onChange,
 }: {
+  accept?: "image" | "any";
   value: string[];
   media: Record<string, MediaSummary>;
   onChange: (ids: string[], added?: MediaSummary) => void;
@@ -342,12 +344,12 @@ export function MediaListField({
         onClick={() => setOpen(true)}
         icon={<ImagePlus aria-hidden="true" className="size-4" />}
       >
-        Add image
+        {accept === "image" ? "Add image" : "Add file"}
       </Button>
       <PickerDialog
         open={open}
         onOpenChange={setOpen}
-        accept="image"
+        accept={accept}
         onPick={(picked) => {
           if (!value.includes(picked.id)) onChange([...value, picked.id], picked);
           setOpen(false);

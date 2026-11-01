@@ -49,11 +49,14 @@ export default async function EditItemPage({ params, searchParams }: Params) {
           {String(item[def.titleField] ?? def.singular)}
         </h1>
       </header>
-      {created && (
-        <Alert tone="success" title="Draft created.">
-          It is not visible on the site until you publish it.
-        </Alert>
-      )}
+      {created &&
+        (def.publishable ? (
+          <Alert tone="success" title="Draft created.">
+            It is not visible on the site until you publish it.
+          </Alert>
+        ) : (
+          <Alert tone="success" title="Created." />
+        ))}
       <ContentForm
         fields={def.fields}
         initial={item}

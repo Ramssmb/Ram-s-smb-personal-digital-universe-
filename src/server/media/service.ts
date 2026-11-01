@@ -47,18 +47,30 @@ export const uploadMetaSchema = z.object({
   altText: z.string().trim().max(300).default(""),
 });
 
+/** The stored-file columns of a media row, produced by `storeFile`. */
+type StoredFile = Pick<
+  MediaRow,
+  | "storageKey"
+  | "kind"
+  | "mimeType"
+  | "byteSize"
+  | "sha256"
+  | "width"
+  | "height"
+  | "variants"
+  | "originalFilename"
+>;
+
 /**
- * Stores an upload. Images are decoded and re-encoded to WebP (dropping EXIF,
- * GPS and anything appended to the file) in several widths; PDFs are stored
- * as-is after their signature is checked.
+ * Validates an upload and writes it to storage under fresh random keys.
+ * Images are decoded and re-encoded to WebP (dropping EXIF, GPS and anything
+ * appended to the file) in several widths; PDFs are stored as-is after their
+ * signature is checked. On failure every file written so far is removed.
  */
-export async function uploadMedia(
+async function storeFile(
   file: File,
-  meta: unknown,
-  admin: SessionUser,
-): Promise<MediaRow> {
-  await enforce(RULES.uploadsPerUser, admin.id);
-  const { access, altText } = uploadMetaSchema.parse(meta);
+  access: Access,
+): Promise<{ stored: StoredFile; written: string[] }> {
   if (file.size === 0) throw new AppError("validation_failed", "The file is empty.");
   if (file.size > MAX_DOCUMENT_BYTES)
     throw new AppError("payload_too_large", "Files can be at most 15 MB.");
@@ -73,6 +85,7 @@ export async function uploadMedia(
   }
   const base = keyBase();
   const originalFilename = (file.name || "upload").replace(/[^\w.\- ()]/g, "_").slice(0, 200);
+  const sha256 = sha256Hex(Buffer.from(bytes));
   const written: string[] = [];
 
   try {
@@ -80,22 +93,20 @@ export async function uploadMedia(
       const key = `${base}.pdf`;
       await putFile(access, key, bytes);
       written.push(key);
-      const [row] = await db()
-        .insert(mediaAssets)
-        .values({
+      return {
+        written,
+        stored: {
           storageKey: key,
-          access,
           kind: "document",
           mimeType: type.mime,
           byteSize: bytes.length,
-          sha256: sha256Hex(Buffer.from(bytes)),
+          sha256,
+          width: null,
+          height: null,
+          variants: [],
           originalFilename,
-          altText,
-          uploadedBy: admin.id,
-        })
-        .returning();
-      await audit({ userId: admin.id, action: "upload", entityType: "media", entityId: row!.id });
-      return row!;
+        },
+      };
     }
 
     if (bytes.length > MAX_IMAGE_BYTES)
@@ -135,30 +146,88 @@ export async function uploadMedia(
       variants.push({ width: target, key, byteSize: data.length });
     }
 
-    const [row] = await db()
-      .insert(mediaAssets)
-      .values({
+    return {
+      written,
+      stored: {
         storageKey,
-        access,
         kind: "image",
         mimeType: "image/webp",
         byteSize: original.length,
-        sha256: sha256Hex(Buffer.from(bytes)),
+        sha256,
         width: storedWidth,
         height: Math.round((height * storedWidth) / width),
         variants,
         originalFilename,
-        altText,
-        uploadedBy: admin.id,
-      })
-      .returning();
-    await audit({ userId: admin.id, action: "upload", entityType: "media", entityId: row!.id });
-    return row!;
+      },
+    };
   } catch (error) {
     // Do not leave orphaned files behind when anything fails.
     await Promise.all(written.map((key) => removeFile(access, key)));
     throw error;
   }
+}
+
+/** Stores a new upload and creates its media row. */
+export async function uploadMedia(
+  file: File,
+  meta: unknown,
+  admin: SessionUser,
+): Promise<MediaRow> {
+  await enforce(RULES.uploadsPerUser, admin.id);
+  const { access, altText } = uploadMetaSchema.parse(meta);
+  const { stored, written } = await storeFile(file, access);
+  try {
+    const [row] = await db()
+      .insert(mediaAssets)
+      .values({ ...stored, access, altText, uploadedBy: admin.id })
+      .returning();
+    await audit({ userId: admin.id, action: "upload", entityType: "media", entityId: row!.id });
+    return row!;
+  } catch (error) {
+    await Promise.all(written.map((key) => removeFile(access, key)));
+    throw error;
+  }
+}
+
+/**
+ * Replaces the file behind an existing media item. The id, alt text and access
+ * stay the same, so every page that uses the item shows the new file. New
+ * storage keys are used because public files are cached as immutable; the old
+ * files are removed only after the row points at the new ones.
+ */
+export async function replaceMediaFile(
+  id: string,
+  file: File,
+  admin: SessionUser,
+): Promise<MediaRow> {
+  await enforce(RULES.uploadsPerUser, admin.id);
+  const current = await getMedia(id);
+  const access = current.access as Access;
+  const { stored, written } = await storeFile(file, access);
+  if (stored.kind !== current.kind) {
+    await Promise.all(written.map((key) => removeFile(access, key)));
+    throw new AppError(
+      "validation_failed",
+      current.kind === "image"
+        ? "Replace an image with another image."
+        : "Replace a document with another PDF.",
+    );
+  }
+  let updated: MediaRow | undefined;
+  try {
+    [updated] = await db()
+      .update(mediaAssets)
+      .set({ ...stored, updatedAt: new Date() })
+      .where(eq(mediaAssets.id, id))
+      .returning();
+  } catch (error) {
+    await Promise.all(written.map((key) => removeFile(access, key)));
+    throw error;
+  }
+  if (!updated) throw new AppError("not_found");
+  await Promise.all(allKeys(current).map((key) => removeFile(access, key)));
+  await audit({ userId: admin.id, action: "replace_file", entityType: "media", entityId: id });
+  return updated;
 }
 
 export async function listMedia(

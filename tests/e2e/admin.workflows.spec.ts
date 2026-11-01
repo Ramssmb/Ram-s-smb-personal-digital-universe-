@@ -197,6 +197,162 @@ test("private content is not reachable without signing in", async ({ browser, pa
   await anon.close();
 });
 
+test("a journal entry can carry a PDF attachment", async ({ page }) => {
+  const pdf = Buffer.from("%PDF-1.7\n1 0 obj << >> endobj\ntrailer\n%%EOF\n");
+  await page.goto("/admin/content/journal/new");
+  await field(page, "Title").fill("Notes on transactions");
+  await field(page, "What I learned (key takeaways)").fill("Isolation levels, explained.");
+  await page
+    .getByRole("group", { name: "Images and attachments" })
+    .getByRole("button", { name: "Add file" })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Choose a file" });
+  await dialog.getByLabel("Choose a file to upload").setInputFiles({
+    name: "isolation-levels.pdf",
+    mimeType: "application/pdf",
+    buffer: pdf,
+  });
+  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Create draft" }).click();
+  await expect(page.getByText("Draft created.")).toBeVisible();
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published. It is now visible on the site.")).toBeVisible();
+
+  await page.goto("/journal/notes-on-transactions");
+  await expect(page.getByRole("heading", { name: "Attachments" })).toBeVisible();
+  const link = page.getByRole("link", { name: /isolation-levels\.pdf/ });
+  await expect(link).toHaveAttribute("href", /^\/media\/.+\.pdf$/);
+  const response = await page.request.get((await link.getAttribute("href"))!);
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-type"]).toBe("application/pdf");
+});
+
+test("an email link can be published on the Links page", async ({ page }) => {
+  await page.goto("/admin/content/links/new");
+  await field(page, "Label").fill("Email me");
+  await field(page, "URL").fill("mailto:hello@example.test?cc=boss@example.test");
+  await select(page, "Category").selectOption("email");
+  await select(page, "Icon").selectOption("mail");
+  await page.getByRole("button", { name: "Create draft" }).click();
+  // Extra mailto parameters are refused.
+  await expect(field(page, "URL")).toHaveAttribute("aria-invalid", "true");
+  await field(page, "URL").fill("mailto:Hello@Example.test");
+  await page.getByRole("button", { name: "Create draft" }).click();
+  await expect(page.getByText("Draft created.")).toBeVisible();
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published. It is now visible on the site.")).toBeVisible();
+
+  await page.goto("/links");
+  const link = page.getByRole("link", { name: /Email me/ });
+  await expect(link).toHaveAttribute("href", "mailto:hello@example.test");
+  await expect(link).not.toHaveAttribute("target", "_blank");
+  await expect(link).toContainText("hello@example.test");
+});
+
+test("skill workflow: categorise, publish, update", async ({ page }) => {
+  // Categories are always live: no draft or publish step.
+  await page.goto("/admin/content/categories/new");
+  await select(page, "Used for").selectOption("skill");
+  await field(page, "Name").fill("Programming Languages");
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByText("Created.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish", exact: true })).toHaveCount(0);
+  await page.goto("/admin/content/categories");
+  await expect(page.getByRole("link", { name: "Programming Languages" })).toBeVisible();
+
+  const editUrl = await createAndPublish(page, "skills", async (p) => {
+    await field(p, "Skill").fill("TypeScript");
+    await select(p, "Category").selectOption({ label: "Programming Languages" });
+    await select(p, "Learning status").selectOption("learning");
+    await field(p, "Description").fill("Typed JavaScript for larger codebases.");
+  });
+  await page.goto("/skills");
+  const group = page.getByRole("region", { name: "Programming Languages" });
+  await expect(group.getByRole("heading", { name: "TypeScript" })).toBeVisible();
+  await expect(group.locator("#typescript").getByText("Learning")).toBeVisible();
+
+  await page.goto(editUrl);
+  await select(page, "Learning status").selectOption("practicing");
+  await field(page, "Description").fill("Used for every project on this site.");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Saved.")).toBeVisible();
+
+  await page.goto("/skills");
+  const card = page.locator("#typescript");
+  await expect(card.getByText("Practicing")).toBeVisible();
+  await expect(card.getByText("Used for every project on this site.")).toBeVisible();
+});
+
+test("journal workflow: draft → publish → read → archive", async ({ page }) => {
+  await page.goto("/admin/content/journal/new");
+  await field(page, "Title").fill("Weekly review");
+  await field(page, "Topic").fill("Reflection");
+  await field(page, "What I learned (key takeaways)").fill("Small daily steps add up.");
+  await page.getByRole("button", { name: "Create draft" }).click();
+  await expect(page.getByText("Draft created.")).toBeVisible();
+  const editUrl = page.url().replace(/\?.*$/, "");
+
+  expect((await page.request.get("/journal/weekly-review")).status()).toBe(404);
+
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published. It is now visible on the site.")).toBeVisible();
+  await page.goto("/journal");
+  await page.getByRole("link", { name: "Weekly review" }).click();
+  await expect(page.getByText("Small daily steps add up.")).toBeVisible();
+  await expect(page.getByText("Reflection")).toBeVisible();
+
+  await page.goto(editUrl);
+  await page.getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByText("Archived.")).toBeVisible();
+  expect((await page.request.get("/journal/weekly-review")).status()).toBe(404);
+  await page.goto("/journal");
+  await expect(page.getByRole("link", { name: "Weekly review" })).toHaveCount(0);
+});
+
+test("media: a file can be replaced from the library", async ({ page }) => {
+  const red = await sharp({
+    create: { width: 800, height: 400, channels: 3, background: "#cc0000" },
+  })
+    .png()
+    .toBuffer();
+  await page.goto("/admin/media?q=blue");
+  const card = page.getByRole("listitem").filter({ hasText: "blue.png" });
+  await card.getByLabel("Replace file").setInputFiles({
+    name: "red.png",
+    mimeType: "image/png",
+    buffer: red,
+  });
+  // The card now shows the new file name, so look for the confirmation page-wide.
+  await expect(page.getByText("File replaced everywhere it is used.")).toBeVisible();
+  await page.goto("/admin/media?q=red");
+  const replaced = page.getByRole("listitem").filter({ hasText: "red.png" });
+  await expect(replaced).toBeVisible();
+  // Same item: its alt text survived the replacement.
+  await expect(replaced.getByLabel("Alt text")).toHaveValue("Solid blue test image");
+  await expect(replaced.getByText("800×400")).toBeVisible();
+});
+
+test("a certification linked to a skill appears on the skills page", async ({ page }) => {
+  await page.goto("/admin/content/certifications/new");
+  await select(page, "Type").selectOption("certification");
+  await field(page, "Title").fill("PostgreSQL Associate");
+  await field(page, "Issuing organization").fill("Example Academy");
+  const skills = page.getByRole("group", { name: "Related skills" });
+  await skills.getByRole("textbox", { name: "Filter related skills" }).fill("Postgre");
+  await skills.getByRole("checkbox", { name: "PostgreSQL" }).check();
+  await page.getByRole("button", { name: "Create draft" }).click();
+  await expect(page.getByText("Draft created.")).toBeVisible();
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Published. It is now visible on the site.")).toBeVisible();
+
+  await page.goto("/skills");
+  const card = page.locator("#postgresql");
+  await expect(card.getByText("Certified through")).toBeVisible();
+  await card.getByRole("link", { name: "PostgreSQL Associate" }).click();
+  await expect(page).toHaveURL(/\/achievements#c-/);
+  await expect(page.getByRole("heading", { name: "PostgreSQL Associate" })).toBeVisible();
+});
+
 const ADMIN_PAGES = [
   "/admin",
   "/admin/profile",

@@ -1,6 +1,41 @@
 # Project progress
 
-Last updated: 2026-11-01 · Version 0.2.2
+Last updated: 2026-11-01 · Version 0.3.0
+
+## Is the website complete?
+
+**The software is feature-complete against the master task. The website itself
+is not finished.** It contains no real personal content yet (only seeded
+structure and the confirmed facts), and it is not deployed to a public domain.
+Both need the owner. Passing CI says the code works; it does not say the site
+is ready for visitors.
+
+### Requirement checklist (master execution task)
+
+| Requirement                                                                                                                       | Status                       | Notes                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------- |
+| Home: intro, hero, bio, education, interests, featured projects, skills, recent learning, achievements, contact CTA, social links | ✅ Built, tested             | Every section hides itself until it has published content               |
+| About: introduction, background, education, interests, direction, philosophy, focus                                               | ✅ Built, tested             | Nine draft sections seeded **empty**; owner writes them                 |
+| Education: institution, degree, branch, period, status, courses, achievements                                                     | ✅ Built, tested             | Seeded entry is a draft; year of study left empty (not confirmed)       |
+| Skills: categories, descriptions, proficiency labels, featured, related projects and certificates                                 | ✅ Built, tested             | Levels only if the owner sets them                                      |
+| Projects: all listed fields, screenshots, detail page, search, filters, categories                                                | ✅ Built, tested             |                                                                         |
+| Experience: all listed fields                                                                                                     | ✅ Built, tested             |                                                                         |
+| Achievements & certifications: all listed kinds, issuers, dates, verification links, images/PDFs                                  | ✅ Built, tested             | Private certificate files require a verification link before publishing |
+| Learning journal: entries, tags, drafts, search, filters, archive, images, attachments                                            | ✅ Built, tested             |                                                                         |
+| Resources: all listed types, notes                                                                                                | ✅ Built, tested             |                                                                         |
+| Contact: form, email, social links, validation, spam protection, server-side, states                                              | ✅ Built, tested             | Messages go to the dashboard inbox; no email notification               |
+| Links page incl. email                                                                                                            | ✅ Built, tested             | `mailto:` without extra parameters                                      |
+| Admin: login/logout, protected routes, owner-only role, overview                                                                  | ✅ Built, tested             | No two-factor authentication                                            |
+| CMS: CRUD, draft/publish/unpublish/archive, preview, visibility, featured, ordering                                               | ✅ Built, tested             | Every public section is managed from the dashboard                      |
+| Media: uploads, library, metadata, replace, delete unused, image optimisation, private files                                      | ✅ Built, tested             | Local-disk storage only                                                 |
+| Categories, tags, profile, social links, site metadata/SEO, messages, account                                                     | ✅ Built, tested             |                                                                         |
+| Database: schema, migrations, FKs, indexes, validation, transactions, search                                                      | ✅ Built, tested             |                                                                         |
+| Security: hashing, sessions, server-side authorisation, CSRF, XSS, SQLi, headers, CSP, rate limits, upload validation, secrets    | ✅ Built, tested             | See docs/AUTH_AND_SECURITY.md                                           |
+| SEO & performance: metadata, OG, sitemap, robots, canonical, JSON-LD, images, lazy loading                                        | ✅ Built, measured           | Simulated LCP 2.6–3.1 s on three image-led pages                        |
+| Responsive, light/dark, keyboard, accessible states                                                                               | ✅ Built, tested             | axe at three viewport sizes in both themes                              |
+| Deployment preparation and documentation                                                                                          | ✅ Prepared, CI smoke-tested |                                                                         |
+| **Real personal content entered and published**                                                                                   | ❌ Not started               | Owner action — nothing may be invented                                  |
+| **Deployed to a public domain over HTTPS**                                                                                        | ❌ Not done                  | Owner action — needs server, domain, secrets                            |
 
 ## Status
 
@@ -47,9 +82,9 @@ facts.
 
 | Suite                             | Result         | Covers                                                                                                                                                                                                                                                                                                                  |
 | --------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit (Vitest)                     | **110 passed** | Config validation, field schemas, unsafe URLs, impossible dates, Markdown XSS sanitizing, file signatures, client-IP parsing, form tokens, components                                                                                                                                                                   |
-| Integration (Vitest)              | **105 passed** | Schema constraints, least-privilege DB role, login/lockout/sessions/password change, 401 + CSRF 403 on all 13 admin route files, content lifecycle for every section, media, contact                                                                                                                                    |
-| End-to-end (Playwright)           | **83 passed**  | Owner workflows through the UI for every content type (create, preview, publish, edit, unpublish, visibility, archive, delete, media); anonymous access blocked; axe (WCAG 2.2 AA + best-practice rules) on 10 dashboard pages and 13 public pages (× phone/tablet/desktop × light/dark); navigation, filters, CSP, SEO |
+| Unit (Vitest)                     | **122 passed** | Config validation, field schemas, unsafe URLs, impossible dates, Markdown XSS sanitizing, file signatures, client-IP parsing, form tokens, components                                                                                                                                                                   |
+| Integration (Vitest)              | **110 passed** | Schema constraints, least-privilege DB role, login/lockout/sessions/password change, 401 + CSRF 403 on all 13 admin route files, content lifecycle for every section, media, contact                                                                                                                                    |
+| End-to-end (Playwright)           | **89 passed**  | Owner workflows through the UI for every content type (create, preview, publish, edit, unpublish, visibility, archive, delete, media); anonymous access blocked; axe (WCAG 2.2 AA + best-practice rules) on 10 dashboard pages and 13 public pages (× phone/tablet/desktop × light/dark); navigation, filters, CSP, SEO |
 | Lint / typecheck / format / build | Clean          |                                                                                                                                                                                                                                                                                                                         |
 
 A deliberate mutation check (removing the "published" condition from the

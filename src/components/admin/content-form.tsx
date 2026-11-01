@@ -275,14 +275,16 @@ export function ContentForm(props: ContentFormProps) {
             loading={busy === "save"}
             disabled={busy !== null && busy !== "save"}
           >
-            {mode === "create" ? "Create draft" : "Save changes"}
+            {mode !== "create" ? "Save changes" : props.publishable ? "Create draft" : "Create"}
           </Button>
           <p className="text-small text-fg-muted" aria-live="polite">
             {dirty
               ? "Unsaved changes"
-              : mode === "create"
-                ? "New items start as drafts."
-                : "All changes saved"}
+              : mode !== "create"
+                ? "All changes saved"
+                : props.publishable
+                  ? "New items start as drafts."
+                  : "Takes effect as soon as it is created."}
           </p>
         </div>
 
@@ -602,10 +604,12 @@ function FieldInput({
         <fieldset className="flex flex-col gap-1.5">
           <legend className="mb-1.5 text-small font-medium">{field.label}</legend>
           <MediaListField
+            accept={field.accept}
             value={(value as string[]) ?? []}
             media={media}
             onChange={(ids, added) => onChange(ids, added)}
           />
+          {field.hint && <p className="text-small text-fg-muted">{field.hint}</p>}
           {error && <p className="text-small font-medium text-danger">{error}</p>}
         </fieldset>
       );

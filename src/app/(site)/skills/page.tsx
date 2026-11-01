@@ -7,7 +7,12 @@ import { Badge, EmptyState } from "@/components/ui/display";
 import { Container, PageHeader } from "@/components/ui/layout";
 import { label } from "@/lib/content/enums";
 import { formatDate } from "@/lib/format";
-import { listCategories, listSkills, projectsBySkill } from "@/server/content/public";
+import {
+  certificationsBySkill,
+  listCategories,
+  listSkills,
+  projectsBySkill,
+} from "@/server/content/public";
 import { pageMetadata } from "@/server/seo";
 
 export async function generateMetadata() {
@@ -34,7 +39,11 @@ export default async function SkillsPage({
     listSkills({ q, category }),
     listCategories("skill"),
   ]);
-  const related = await projectsBySkill(skills.map((s) => s.id));
+  const skillIds = skills.map((s) => s.id);
+  const [related, certified] = await Promise.all([
+    projectsBySkill(skillIds),
+    certificationsBySkill(skillIds),
+  ]);
   const groups = new Map<string, typeof skills>();
   for (const skill of skills) {
     const key = skill.categoryName ?? "Other";
@@ -71,9 +80,10 @@ export default async function SkillsPage({
         />
       ) : (
         <div className="flex flex-col gap-12 pb-16">
-          {[...groups.entries()].map(([group, items]) => (
-            <section key={group} aria-labelledby={`group-${group}`}>
-              <h2 id={`group-${group}`} className="text-h3 font-semibold">
+          {[...groups.entries()].map(([group, items], index) => (
+            // Ids must not contain spaces: aria-labelledby splits on whitespace.
+            <section key={group} aria-labelledby={`skill-group-${index}`}>
+              <h2 id={`skill-group-${index}`} className="text-h3 font-semibold">
                 {group}
               </h2>
               <ul className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -101,9 +111,25 @@ export default async function SkillsPage({
                             {index > 0 && ", "}
                             <Link
                               href={`/projects/${project.slug}` as Route}
-                              className="font-medium text-accent"
+                              className="font-medium text-accent underline underline-offset-2"
                             >
                               {project.title}
+                            </Link>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    {(certified.get(skill.id) ?? []).length > 0 && (
+                      <p className="text-small text-fg-muted">
+                        Certified through{" "}
+                        {(certified.get(skill.id) ?? []).map((cert, index) => (
+                          <span key={cert.id}>
+                            {index > 0 && ", "}
+                            <Link
+                              href={`/achievements#c-${cert.id}` as Route}
+                              className="font-medium text-accent underline underline-offset-2"
+                            >
+                              {cert.title}
                             </Link>
                           </span>
                         ))}

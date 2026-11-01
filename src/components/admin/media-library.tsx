@@ -64,6 +64,25 @@ function MediaCard({ item }: { item: Item }) {
     router.refresh();
   }
 
+  async function replace(file: File) {
+    setBusy(true);
+    setMessage(null);
+    const body = new FormData();
+    body.set("file", file);
+    try {
+      await api(`/api/v1/admin/media/${item.id}/file`, { method: "PUT", body });
+      setMessage({ ok: true, text: "File replaced everywhere it is used." });
+      router.refresh();
+    } catch (thrown) {
+      setMessage({
+        ok: false,
+        text: thrown instanceof ApiError ? thrown.message : "Could not replace the file.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <li className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4">
       <a
@@ -106,10 +125,35 @@ function MediaCard({ item }: { item: Item }) {
             <option value="private">Private</option>
           </select>
         </label>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <Button type="submit" variant="secondary" size="sm" loading={busy}>
             Save
           </Button>
+          {/* A visually styled label for the hidden input keeps it keyboard-reachable. */}
+          <label
+            className={buttonClasses(
+              "ghost",
+              "sm",
+              "cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--accent)]",
+            )}
+          >
+            Replace file
+            <input
+              type="file"
+              className="sr-only"
+              disabled={busy}
+              accept={
+                item.kind === "image"
+                  ? "image/jpeg,image/png,image/webp,image/avif"
+                  : "application/pdf"
+              }
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void replace(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
           <ConfirmDialog
             trigger={
               <Button

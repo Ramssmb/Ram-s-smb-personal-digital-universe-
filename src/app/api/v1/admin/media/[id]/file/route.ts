@@ -1,8 +1,9 @@
 import { requireAdmin } from "@/server/auth/guard";
+import { readUploadForm } from "@/server/http/body";
 import { AppError } from "@/server/http/errors";
 import { apiHandler } from "@/server/http/handler";
 import { param } from "@/server/http/params";
-import { getMedia } from "@/server/media/service";
+import { getMedia, replaceMediaFile } from "@/server/media/service";
 import { readStoredFile, type Access } from "@/server/media/storage";
 
 /** Streams any file — including private ones — to the signed-in owner only. */
@@ -21,4 +22,11 @@ export const GET = apiHandler(async ({ request, params }) => {
       "content-disposition": `inline; filename="${row.originalFilename.replace(/"/g, "")}"`,
     },
   });
+});
+
+/** Replaces the file behind a media item; everything that uses it shows the new file. */
+export const PUT = apiHandler(async ({ request, params }) => {
+  const admin = await requireAdmin(request);
+  const { file } = await readUploadForm(request);
+  return Response.json({ item: await replaceMediaFile(param(params, "id"), file, admin) });
 });

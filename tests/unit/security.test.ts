@@ -1,4 +1,4 @@
-import { safeExternalUrl } from "@/lib/safe-url";
+import { safeExternalUrl, safeMailto } from "@/lib/safe-url";
 import {
   contentSecurityPolicy,
   createNonce,
@@ -77,5 +77,24 @@ describe("safeExternalUrl", () => {
     undefined,
   ])("rejects %j", (url) => {
     expect(safeExternalUrl(url)).toBeNull();
+  });
+});
+
+describe("safeMailto", () => {
+  it("accepts a plain address and normalizes case", () => {
+    expect(safeMailto("mailto:Me@Example.test")).toBe("mailto:me@example.test");
+  });
+
+  it.each([
+    "mailto:me@example.test?cc=boss@example.test",
+    "mailto:me@example.test?body=hi",
+    "mailto:me@example.test&cc=x@y.z",
+    "mailto:not-an-address",
+    "mailto:a@b",
+    "mailto:me@example.test, other@example.test",
+    "javascript:alert(1)//mailto:me@example.test",
+    "me@example.test",
+  ])("rejects %j", (value) => {
+    expect(safeMailto(value)).toBeNull();
   });
 });

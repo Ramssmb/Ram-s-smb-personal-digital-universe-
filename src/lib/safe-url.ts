@@ -15,3 +15,15 @@ export function safeExternalUrl(value: string | null | undefined): string | null
   if (url.username || url.password) return null;
   return url.toString();
 }
+
+const MAILTO = /^mailto:([^\s@?&#/:]+@[^\s@?&#/:]+\.[^\s@?&#/:]+)$/i;
+
+/**
+ * Accepts only `mailto:address` with a plausible address and nothing else:
+ * query parts such as ?cc= or ?body= are rejected so a link cannot add
+ * recipients or pre-filled text. Returns the normalized link or null.
+ */
+export function safeMailto(value: string | null | undefined): string | null {
+  const match = value ? MAILTO.exec(value.trim()) : null;
+  return match ? `mailto:${match[1]!.toLowerCase()}` : null;
+}

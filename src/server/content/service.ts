@@ -379,11 +379,13 @@ async function publishProblems(key: CollectionKey, row: Row): Promise<Record<str
     if (files.some((f) => f.kind === "image" && f.access === "public" && !f.alt.trim())) {
       problems.media = "Add alt text to every image in the media library before publishing.";
     }
-    const imageFields = def.fields.filter(
-      (f) => (f.kind === "media" || f.kind === "media-many") && f.accept === "image",
+    // Image fields and file lists are always rendered publicly, so their files must be
+    // public. (A single certificate file may be private; see the check below.)
+    const shownFields = def.fields.filter(
+      (f) => f.kind === "media-many" || (f.kind === "media" && f.accept === "image"),
     );
-    const imageIds = new Set(
-      imageFields.flatMap((f) =>
+    const shownIds = new Set(
+      shownFields.flatMap((f) =>
         Array.isArray(row[f.name])
           ? (row[f.name] as string[])
           : row[f.name]
@@ -391,8 +393,9 @@ async function publishProblems(key: CollectionKey, row: Row): Promise<Record<str
             : [],
       ),
     );
-    if (files.some((f) => imageIds.has(f.id) && f.access === "private")) {
-      problems.media = "Images on public pages must be public files.";
+    if (files.some((f) => shownIds.has(f.id) && f.access === "private")) {
+      problems.media =
+        "Files shown on public pages must be public. Change them in the media library.";
     }
   }
   if (key === "certifications" && row.mediaId && !row.verificationUrl) {

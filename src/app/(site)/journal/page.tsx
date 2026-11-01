@@ -44,7 +44,10 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
         description={
           <>
             What I learn, build and solve, as it happens.{" "}
-            <a href="/journal/feed.xml" className="font-medium text-accent">
+            <a
+              href="/journal/feed.xml"
+              className="font-medium text-accent underline underline-offset-2"
+            >
               Subscribe via RSS
             </a>
           </>

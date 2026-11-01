@@ -191,3 +191,33 @@ describe("plainExcerpt list handling", () => {
     );
   });
 });
+
+describe("link URLs", () => {
+  const linkSchema = buildSchema(COLLECTIONS.links.fields);
+  const base = { label: "Email", kind: "email", icon: "mail" };
+
+  it("accept https and plain mailto links", () => {
+    expect(linkSchema.parse({ ...base, url: "mailto:Me@Example.test" }).url).toBe(
+      "mailto:me@example.test",
+    );
+    expect(linkSchema.safeParse({ ...base, url: "https://github.com/x" }).success).toBe(true);
+  });
+
+  it("reject mailto with extra parameters and other schemes", () => {
+    expect(linkSchema.safeParse({ ...base, url: "mailto:me@example.test?cc=x@y.z" }).success).toBe(
+      false,
+    );
+    expect(linkSchema.safeParse({ ...base, url: "javascript:alert(1)" }).success).toBe(false);
+  });
+
+  it("do not accept mailto in ordinary URL fields", () => {
+    const projectSchema = buildSchema(COLLECTIONS.projects.fields);
+    expect(
+      projectSchema.safeParse({
+        title: "P",
+        projectStatus: "planned",
+        repoUrl: "mailto:me@example.test",
+      }).success,
+    ).toBe(false);
+  });
+});

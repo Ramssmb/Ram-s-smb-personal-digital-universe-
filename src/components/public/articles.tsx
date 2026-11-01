@@ -9,7 +9,14 @@ import { label } from "@/lib/content/enums";
 import type { LinkItem } from "@/server/db/schema";
 import { formatDate, formatRange } from "@/lib/format";
 
-import { Prose, ResponsiveImage, TagList, type ImageData } from "./content";
+import {
+  FileLink,
+  Prose,
+  ResponsiveImage,
+  TagList,
+  type FileData,
+  type ImageData,
+} from "./content";
 
 export interface ProjectArticleData {
   title: string;
@@ -169,6 +176,7 @@ export interface JournalArticleData {
   skills: { name: string; slug: string }[];
   tags: { name: string; slug: string }[];
   images: ImageData[];
+  attachments: FileData[];
   previous: { slug: string; title: string } | null;
   next: { slug: string; title: string } | null;
 }
@@ -217,6 +225,18 @@ export function JournalArticle({ entry }: { entry: JournalArticleData }) {
                 />
               ))}
             </div>
+          )}
+          {entry.attachments.length > 0 && (
+            <section className="flex flex-col gap-3">
+              <h2 className="text-h3 font-semibold">Attachments</h2>
+              <ul className="flex flex-col gap-2">
+                {entry.attachments.map((file) => (
+                  <li key={file.href}>
+                    <FileLink file={file} label={file.name} />
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
           {entry.skills.length > 0 && (
             <section className="flex flex-col gap-3">

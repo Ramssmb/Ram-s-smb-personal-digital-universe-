@@ -249,6 +249,28 @@ export async function projectsBySkill(skillIds: string[]) {
   return map;
 }
 
+/** Published certifications and courses linked to each skill, for the skills page. */
+export async function certificationsBySkill(skillIds: string[]) {
+  const map = new Map<string, { id: string; title: string }[]>();
+  if (!skillIds.length) return map;
+  const rows = await db()
+    .select({
+      skillId: s.certificationSkills.skillId,
+      id: s.certifications.id,
+      title: s.certifications.title,
+    })
+    .from(s.certificationSkills)
+    .innerJoin(s.certifications, eq(s.certifications.id, s.certificationSkills.certificationId))
+    .where(and(inArray(s.certificationSkills.skillId, skillIds), live(s.certifications)))
+    .orderBy(asc(s.certifications.title));
+  for (const row of rows) {
+    const list = map.get(row.skillId) ?? [];
+    list.push({ id: row.id, title: row.title });
+    map.set(row.skillId, list);
+  }
+  return map;
+}
+
 // ---------------------------------------------------------------- projects
 
 export const PROJECT_SORTS = ["featured", "newest", "oldest", "title"] as const;
@@ -552,11 +574,14 @@ async function journalDetail(where: SQL, withNeighbours: boolean) {
         .limit(1),
     ]);
   }
+  const files = images.map((i) => media.get(i.mediaId)).filter((m) => m !== undefined);
   return {
     ...entry,
     skills: skillMap.get(entry.id) ?? [],
     tags: tagMap.get(entry.id) ?? [],
-    images: images.map((i) => media.get(i.mediaId)).filter((m) => m !== undefined),
+    // Images render inline; documents (PDFs) are listed as attachments.
+    images: files.filter((f) => f.kind === "image"),
+    attachments: files.filter((f) => f.kind === "document"),
     previous,
     next,
   };

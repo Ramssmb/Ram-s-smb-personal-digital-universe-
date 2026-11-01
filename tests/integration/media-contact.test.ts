@@ -7,11 +7,11 @@ import { POST as contactRoute } from "@/app/api/v1/contact/route";
 import { POST as collectionPost } from "@/app/api/v1/admin/collections/[collection]/route";
 import { POST as itemAction } from "@/app/api/v1/admin/collections/[collection]/[id]/[action]/route";
 import { DELETE as mediaDelete, PATCH as mediaPatch } from "@/app/api/v1/admin/media/[id]/route";
-import { GET as mediaFile } from "@/app/api/v1/admin/media/[id]/file/route";
+import { GET as mediaFile, PUT as mediaReplace } from "@/app/api/v1/admin/media/[id]/file/route";
 import { POST as mediaUpload } from "@/app/api/v1/admin/media/route";
 import { PATCH as messagePatch } from "@/app/api/v1/admin/messages/[id]/route";
 import { GET as publicMedia } from "@/app/media/[...path]/route";
-import { getProject } from "@/server/content/public";
+import { getJournalEntry, getProject } from "@/server/content/public";
 import { issueFormToken } from "@/server/services/contact";
 
 import {
@@ -50,6 +50,110 @@ async function upload(data: ArrayLike<number>, name: string, fields: Record<stri
     routeContext(),
   );
 }
+
+async function replaceFile(
+  id: string,
+  data: ArrayLike<number>,
+  name: string,
+  cookie = admin.cookie,
+) {
+  const form = new FormData();
+  form.set("file", new File([new Uint8Array(data)], name));
+  return mediaReplace(
+    request("PUT", `/api/v1/admin/media/${id}/file`, { cookie, body: form }),
+    routeContext({ id }),
+  );
+}
+
+describe("replacing a file", () => {
+  it("keeps the item, swaps the file everywhere it is used and removes the old files", async () => {
+    const { item: original } = await (
+      await upload(await jpegWithGps(1200, 800), "v1.jpg", { altText: "Dashboard" })
+    ).json();
+    const created = await collectionPost(
+      request("POST", "/x", {
+        cookie: admin.cookie,
+        json: { title: "Swap", summary: "S", projectStatus: "planned", coverMediaId: original.id },
+      }),
+      routeContext({ collection: "projects" }),
+    );
+    const { item: project } = await created.json();
+    await itemAction(
+      request("POST", "/x", { cookie: admin.cookie }),
+      routeContext({ collection: "projects", id: project.id, action: "publish" }),
+    );
+
+    const smaller = await sharp({
+      create: { width: 600, height: 300, channels: 3, background: "#ff0000" },
+    })
+      .png()
+      .toBuffer();
+    const response = await replaceFile(original.id, smaller, "v2.png");
+    expect(response.status).toBe(200);
+    const { item: replaced } = await response.json();
+    expect(replaced).toMatchObject({
+      id: original.id,
+      altText: "Dashboard",
+      access: "public",
+      width: 600,
+      height: 300,
+      originalFilename: "v2.png",
+    });
+    expect(replaced.storageKey).not.toBe(original.storageKey);
+
+    // Old files are gone from disk; the new ones are served.
+    const storage = join(process.env.STORAGE_DIR!, "public");
+    expect(existsSync(join(storage, original.storageKey))).toBe(false);
+    for (const variant of original.variants) {
+      expect(existsSync(join(storage, variant.key))).toBe(false);
+    }
+    expect(existsSync(join(storage, replaced.storageKey))).toBe(true);
+
+    // The published project now shows the new file.
+    const detail = await getProject("swap");
+    expect(detail?.cover?.src).toBe(`/media/${replaced.storageKey}`);
+    expect(detail?.cover?.width).toBe(600);
+  });
+
+  it("only replaces an image with an image and a PDF with a PDF", async () => {
+    const { item: image } = await (await upload(await jpegWithGps(400, 300), "a.jpg")).json();
+    const pdf = new TextEncoder().encode("%PDF-1.7\n1 0 obj << >> endobj\ntrailer\n%%EOF");
+    const refused = await replaceFile(image.id, pdf, "doc.pdf");
+    expect(refused.status).toBe(400);
+    // Nothing changed and no stray file was left behind.
+    const [row] = await ownerSql<{ storage_key: string }[]>`
+      SELECT storage_key FROM media_assets WHERE id = ${image.id}`;
+    expect(row?.storage_key).toBe(image.storageKey);
+    const pdfFiles = await ownerSql<{ n: number }[]>`
+      SELECT count(*)::int AS n FROM media_assets WHERE storage_key LIKE '%.pdf'`;
+    expect(pdfFiles[0]?.n).toBe(0);
+  });
+
+  it("validates the new file like any upload", async () => {
+    const { item: image } = await (await upload(await jpegWithGps(400, 300), "a.jpg")).json();
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>');
+    expect((await replaceFile(image.id, svg, "x.png")).status).toBe(415);
+    expect(
+      (
+        await replaceFile(
+          "00000000-0000-4000-8000-000000000000",
+          await jpegWithGps(10, 10),
+          "a.jpg",
+        )
+      ).status,
+    ).toBe(404);
+  });
+
+  it("keeps private files private after replacement", async () => {
+    const pdf = new TextEncoder().encode("%PDF-1.7\n1 0 obj << >> endobj\ntrailer\n%%EOF");
+    const { item } = await (await upload(pdf, "transcript.pdf", { access: "private" })).json();
+    const response = await replaceFile(item.id, pdf, "transcript-v2.pdf");
+    const { item: replaced } = await response.json();
+    expect(replaced.access).toBe("private");
+    expect(existsSync(join(process.env.STORAGE_DIR!, "private", replaced.storageKey))).toBe(true);
+    expect(existsSync(join(process.env.STORAGE_DIR!, "public", replaced.storageKey))).toBe(false);
+  });
+});
 
 describe("media uploads", () => {
   it("re-encodes images to WebP variants and strips EXIF and GPS data", async () => {
@@ -188,6 +292,38 @@ describe("media uploads", () => {
         )
       ).status,
     ).toBe(409);
+  });
+
+  it("refuses to publish a journal entry whose attachments include a private file", async () => {
+    const pdf = new TextEncoder().encode("%PDF-1.7\n1 0 obj << >> endobj\ntrailer\n%%EOF");
+    const { item: privateFile } = await (
+      await upload(pdf, "private-notes.pdf", { access: "private" })
+    ).json();
+    const { item: publicFile } = await (await upload(pdf, "public-notes.pdf")).json();
+    const create = (mediaIds: string[], title: string) =>
+      collectionPost(
+        request("POST", "/x", {
+          cookie: admin.cookie,
+          json: { entryDate: "2026-11-01", title, learnedMd: "Content.", mediaIds },
+        }),
+        routeContext({ collection: "journal" }),
+      ).then((r) => r.json());
+    const publish = (id: string) =>
+      itemAction(
+        request("POST", "/x", { cookie: admin.cookie }),
+        routeContext({ collection: "journal", id, action: "publish" }),
+      );
+
+    const withPrivate = (await create([privateFile.id], "With private file")).item;
+    const refused = await publish(withPrivate.id);
+    expect(refused.status).toBe(400);
+    expect((await refused.json()).error.fields.media).toMatch(/must be public/);
+
+    const withPublic = (await create([publicFile.id], "With public file")).item;
+    expect((await publish(withPublic.id)).status).toBe(200);
+    const entry = await getJournalEntry("with-public-file");
+    expect(entry?.attachments.map((a) => a.name)).toEqual(["public-notes.pdf"]);
+    expect(entry?.images).toEqual([]);
   });
 
   it("moves files when access changes and deletes them from disk", async () => {
