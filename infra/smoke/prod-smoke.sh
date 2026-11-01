@@ -70,7 +70,7 @@ step "Sign in and upload an image"
 login
 python3 - <<'PY' > /tmp/smoke.png
 import struct, sys, zlib
-w, h = 64, 48
+w, h = 640, 480  # wide enough for a resized variant
 raw = b"".join(b"\x00" + bytes([47, 91, 234]) * w for _ in range(h))
 def chunk(t, d): return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
 sys.stdout.buffer.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
@@ -114,13 +114,25 @@ test "$("${COMPOSE[@]}" exec -T db psql -U postgres -d personal_site -At -c "SEL
   || fail "restored live tables are not owned by site_owner"
 
 step "Disaster recovery: restore lost media from the archive"
-"${COMPOSE[@]}" run --rm --no-deps -T --entrypoint sh app -c "rm /data/storage/public/$key"
+in_app() { "${COMPOSE[@]}" run --rm --no-deps -T --entrypoint sh app -c "$1"; }
+# Every stored file (original and resized variants) with its checksum.
+checksums() { in_app "cd /data/storage && find . -type f -exec sha256sum {} + | sort -k2"; }
+before=$(checksums)
+served_before=$("${CURL[@]}" "$BASE/media/$key" | sha256sum)
+echo "$before"
+test "$(wc -l <<<"$before")" -ge 2 || fail "expected the image and its variants in the media volume"
+# Lose every uploaded file.
+in_app "rm -rf /data/storage/public /data/storage/private"
+test -z "$(checksums)" || fail "the media volume was not emptied before the restore"
 test "$(curl -sk -o /dev/null -w '%{http_code}' "$BASE/media/$key")" = "404" \
-  || fail "the image was not removed before the media restore"
+  || fail "the image is still served after deleting it"
 # The same command as docs/DEPLOYMENT.md §8. The archive is streamed in, so it
 # works whichever host user owns the (mode 600) backup file.
 "${COMPOSE[@]}" run --rm --no-deps -T --entrypoint sh app -c "tar -xzf - -C /data" < "$media"
-"${CURL[@]}" -o /dev/null "$BASE/media/$key" || fail "the image is not served after the media restore"
+test "$(checksums)" = "$before" || fail "restored media files differ from the originals"
+test "$("${CURL[@]}" "$BASE/media/$key" | sha256sum)" = "$served_before" \
+  || fail "the restored image is not served with its original content"
+echo "restored $(wc -l <<<"$before") files with identical checksums"
 rm -rf "$BACKUP_DIR"
 
 step "The app shuts down gracefully"
