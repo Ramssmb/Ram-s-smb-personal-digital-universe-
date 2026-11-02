@@ -70,3 +70,21 @@ export function plainExcerpt(markdown: string | null | undefined, max = 155): st
   const cut = text.slice(0, max - 1);
   return `${cut.slice(0, cut.lastIndexOf(" ") > 40 ? cut.lastIndexOf(" ") : cut.length)}…`;
 }
+
+/** A journal entry's summary, or else an excerpt of its first section with content. */
+export function journalExcerpt(entry: {
+  summary: string;
+  learnedMd: string;
+  bodyMd: string;
+  builtMd: string;
+  problemsMd: string;
+}): string | undefined {
+  const source = [
+    entry.summary,
+    entry.learnedMd,
+    entry.bodyMd,
+    entry.builtMd,
+    entry.problemsMd,
+  ].find((s) => s.trim());
+  return source ? plainExcerpt(source) : undefined;
+}

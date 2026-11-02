@@ -1,7 +1,13 @@
 import { COLLECTIONS, COLLECTION_KEYS, isCollectionKey } from "@/lib/content/collections";
 import { buildSchema, slugify } from "@/lib/content/fields";
 import { PROFILE_FIELDS, SETTINGS_FIELDS } from "@/lib/content/singletons";
-import { formatDate, formatMonthKey, formatRange, plainExcerpt } from "@/lib/format";
+import {
+  formatDate,
+  formatMonthKey,
+  formatRange,
+  journalExcerpt,
+  plainExcerpt,
+} from "@/lib/format";
 
 describe("slugify", () => {
   it.each([
@@ -219,5 +225,25 @@ describe("link URLs", () => {
         repoUrl: "mailto:me@example.test",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("journalExcerpt", () => {
+  const empty = { summary: "", learnedMd: "", bodyMd: "", builtMd: "", problemsMd: "" };
+
+  it("prefers the summary", () => {
+    expect(journalExcerpt({ ...empty, summary: "Short summary", learnedMd: "Other" })).toBe(
+      "Short summary",
+    );
+  });
+
+  it("falls back to the first section with content, as plain text", () => {
+    expect(journalExcerpt({ ...empty, builtMd: "  ", problemsMd: "Fixed **the** bug" })).toBe(
+      "Fixed the bug",
+    );
+  });
+
+  it("is undefined when nothing is written", () => {
+    expect(journalExcerpt(empty)).toBeUndefined();
   });
 });

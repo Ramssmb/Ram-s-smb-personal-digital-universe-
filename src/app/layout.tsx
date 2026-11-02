@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { THEME_COOKIE, parseThemePreference, themeAttribute } from "@/lib/theme";
 import { getIdentity } from "@/server/content/public";
 import { env } from "@/server/env";
+import { FEED_PATH, SHARE_IMAGE, shareImageUrl } from "@/server/seo";
 
 import "./globals.css";
 
@@ -16,28 +17,37 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 // the database.
 export const dynamic = "force-dynamic";
 
+// Pages that set their own social metadata use socialMetadata() (src/server/seo.ts),
+// because Next.js replaces these objects instead of merging them. This is the
+// fallback for pages that do not (search, 404).
 export async function generateMetadata(): Promise<Metadata> {
   const { settings, siteName, ogImage } = await getIdentity();
   const name = siteName ?? "Personal site";
+  const image = ogImage
+    ? [{ url: shareImageUrl(ogImage), ...SHARE_IMAGE, alt: ogImage.alt, type: "image/jpeg" }]
+    : undefined;
   return {
     metadataBase: new URL(env().SITE_URL),
-    title: { default: name, template: settings.titleTemplate ?? "%s" },
+    // The stored default is a bare "%s": until a template with more than that is
+    // saved in Settings, page titles still carry the site name.
+    title: {
+      default: name,
+      template:
+        settings.titleTemplate && settings.titleTemplate !== "%s"
+          ? settings.titleTemplate
+          : siteName
+            ? `%s · ${name}`
+            : "%s",
+    },
     description: settings.defaultDescription ?? undefined,
     applicationName: name,
-    openGraph: {
-      type: "website",
-      siteName: name,
-      ...(ogImage
-        ? {
-            images: [
-              { url: ogImage.src, width: ogImage.width, height: ogImage.height, alt: ogImage.alt },
-            ],
-          }
-        : {}),
+    openGraph: { type: "website", siteName: name, images: image },
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      images: image?.map(({ url, alt }) => ({ url, alt })),
     },
-    twitter: { card: ogImage ? "summary_large_image" : "summary" },
     alternates: {
-      types: { "application/rss+xml": [{ url: "/journal/feed.xml", title: `${name} — Journal` }] },
+      types: { "application/rss+xml": [{ url: FEED_PATH, title: `${name} — Journal` }] },
     },
   };
 }

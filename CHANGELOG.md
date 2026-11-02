@@ -6,6 +6,23 @@ All notable changes to this project. Dates are UTC.
 
 ### Fixed
 
+- **Social sharing:** pages set their own Open Graph data, which Next.js uses
+  instead of the layout's, so `og:site_name`, `og:type` and the default sharing
+  image were missing on every page. All pages now build the full set
+  (`socialMetadata` in `src/server/seo.ts`), including the RSS `<link>`, which
+  was missing for the same reason.
+- Sharing images are served as 1200 × 630 JPEG (`/media/og/<key>.jpg`); pages
+  with an image use the large X card; journal entries share their first image,
+  otherwise the default one.
+- Page titles include the site name until a title template is saved.
+- RSS items have a description (summary or first section) and the feed has a
+  real description and `lastBuildDate`.
+- The sitemap lists a section only when it has published content.
+- JSON-LD: projects and journal entries include `image`, `mainEntityOfPage` and
+  the author's URL; the home page's `sameAs` lists only links marked as yours.
+- The dashboard and API send `X-Robots-Tag: noindex, nofollow`.
+- `admin:create` showed the typed password on Windows terminals; it is now read
+  in raw mode and shown as `*`.
 - The documented media restore failed when the backup file belonged to a
   different host user than the container's (backups are mode 600). The archive
   is now streamed into the container.

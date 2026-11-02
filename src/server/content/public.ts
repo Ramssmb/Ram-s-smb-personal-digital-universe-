@@ -1,7 +1,7 @@
 import "server-only";
 
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql, type SQL } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import { cache } from "react";
 
 import { db } from "@/server/db/client";
@@ -160,6 +160,16 @@ export const getFeaturedLinks = cache(async () =>
     .where(and(live(s.links), eq(s.links.isFeatured, true)))
     .orderBy(asc(s.links.sortOrder)),
 );
+
+/** Web profiles the owner marked as theirs (rel="me"); used as schema.org `sameAs`. */
+export async function getIdentityProfileUrls(): Promise<string[]> {
+  const rows = await db()
+    .select({ url: s.links.url })
+    .from(s.links)
+    .where(and(live(s.links), eq(s.links.relMe, true)))
+    .orderBy(asc(s.links.sortOrder));
+  return rows.map((r) => r.url).filter((url) => /^https?:\/\//i.test(url));
+}
 
 export async function listLinks() {
   return db()
@@ -842,14 +852,91 @@ export async function sitemapEntries() {
   return { projects, journal };
 }
 
+type LiveTable = PgTable & {
+  status: AnyPgColumn;
+  visibility: AnyPgColumn;
+  updatedAt: AnyPgColumn;
+};
+
+/** Latest change among published, public rows, or null when there are none. */
+async function lastPublished(table: LiveTable): Promise<Date | null> {
+  const [row] = await db()
+    .select({ at: sql<string | null>`max(${table.updatedAt})` })
+    .from(table)
+    .where(live(table));
+  return row?.at ? new Date(row.at) : null;
+}
+
+/**
+ * Section pages worth listing in the sitemap — only those with published
+ * content, so search engines are not sent to empty pages — with their last
+ * change. Home is always listed; contact when the form or an email is offered.
+ */
+export async function sitemapSections(): Promise<{ path: string; lastModified?: Date }[]> {
+  const [settings, profile] = await Promise.all([getSettingsRow(), getProfile()]);
+  const [
+    about,
+    education,
+    skills,
+    projects,
+    experience,
+    achievements,
+    certifications,
+    journal,
+    resources,
+    links,
+  ] = await Promise.all([
+    lastPublished(s.aboutSections),
+    lastPublished(s.education),
+    lastPublished(s.skills),
+    lastPublished(s.projects),
+    lastPublished(s.experiences),
+    lastPublished(s.achievements),
+    lastPublished(s.certifications),
+    lastPublished(s.journalEntries),
+    lastPublished(s.resources),
+    lastPublished(s.links),
+  ]);
+  const latest = (...dates: (Date | null)[]) =>
+    dates.filter((d): d is Date => d !== null).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  // [path, has content, last change]
+  const sections: [string, boolean, Date | null][] = [
+    ["/about", Boolean(about || profile.shortBio), latest(about, profile.updatedAt ?? null)],
+    ["/education", Boolean(education), education],
+    ["/skills", Boolean(skills), skills],
+    ["/projects", Boolean(projects), projects],
+    ["/experience", Boolean(experience), experience],
+    [
+      "/achievements",
+      Boolean(achievements || certifications),
+      latest(achievements, certifications),
+    ],
+    ["/journal", Boolean(journal), journal],
+    ["/resources", Boolean(resources), resources],
+    ["/links", Boolean(links), links],
+  ];
+  return [
+    { path: "/" },
+    ...sections
+      .filter(([, hasContent]) => hasContent)
+      .map(([path, , at]) => ({ path, ...(at ? { lastModified: at } : {}) })),
+    ...(settings.contactEnabled || settings.publicEmail ? [{ path: "/contact" }] : []),
+  ];
+}
+
 export async function recentJournalForFeed(limit = 30) {
   return db()
     .select({
       slug: s.journalEntries.slug,
       title: s.journalEntries.title,
       summary: s.journalEntries.summary,
+      learnedMd: s.journalEntries.learnedMd,
+      bodyMd: s.journalEntries.bodyMd,
+      builtMd: s.journalEntries.builtMd,
+      problemsMd: s.journalEntries.problemsMd,
       entryDate: s.journalEntries.entryDate,
       publishedAt: s.journalEntries.publishedAt,
+      updatedAt: s.journalEntries.updatedAt,
     })
     .from(s.journalEntries)
     .where(live(s.journalEntries))

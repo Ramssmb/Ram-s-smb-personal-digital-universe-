@@ -19,6 +19,7 @@ import { formatDate } from "@/lib/format";
 import {
   getFeaturedLinks,
   getIdentity,
+  getIdentityProfileUrls,
   listAchievements,
   listCertifications,
   listEducation,
@@ -38,7 +39,7 @@ export async function generateMetadata() {
 
 export default async function HomePage() {
   const { profile, settings, siteName, photo } = await getIdentity();
-  const [links, education, projects, skills, journal, achievements, certifications] =
+  const [links, education, projects, skills, journal, achievements, certifications, profileUrls] =
     await Promise.all([
       getFeaturedLinks(),
       settings.homeShowEducation ? listEducation() : Promise.resolve([]),
@@ -53,6 +54,7 @@ export default async function HomePage() {
       settings.homeShowAchievements
         ? listCertifications({ featured: true, limit: 4 })
         : Promise.resolve([]),
+      getIdentityProfileUrls(),
     ]);
   const highlights = [
     ...achievements.map((a) => ({
@@ -105,7 +107,7 @@ export default async function HomePage() {
             ...(profile.headline ? { description: profile.headline } : {}),
             url: absoluteUrl("/"),
             ...(photo ? { image: absoluteUrl(photo.src) } : {}),
-            ...(links.length ? { sameAs: links.map((l) => l.url) } : {}),
+            ...(profileUrls.length ? { sameAs: profileUrls } : {}),
             ...(currentEducation
               ? { alumniOf: { "@type": "CollegeOrUniversity", name: currentEducation.institution } }
               : {}),

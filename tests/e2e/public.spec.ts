@@ -137,6 +137,49 @@ test("page metadata", async ({ page }) => {
   await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(1);
 });
 
+test("every kind of page carries complete social metadata and the feed link", async ({ page }) => {
+  for (const path of ["/", "/about", "/projects", "/journal/learned-how-b-tree-indexes-work"]) {
+    await page.goto(path);
+    const meta = (selector: string) => page.locator(selector).first().getAttribute("content");
+    expect(await meta('meta[property="og:site_name"]'), path).toBe("E2E Person");
+    expect(await meta('meta[property="og:type"]'), path).toMatch(/^(website|article)$/);
+    expect(await meta('meta[property="og:url"]'), path).toMatch(/^https?:\/\//);
+    expect(await meta('meta[name="twitter:card"]'), path).toMatch(/^summary/);
+    await expect(page.locator('link[rel="alternate"][type="application/rss+xml"]')).toHaveCount(1);
+  }
+});
+
+test("a project with a cover shares a 1200 × 630 JPEG", async ({ page, request }) => {
+  await page.goto("/projects/uptime-monitor");
+  const image = await page.locator('meta[property="og:image"]').getAttribute("content");
+  expect(image).toMatch(/\/media\/og\/.+\.webp\.jpg$/);
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+    "content",
+    "summary_large_image",
+  );
+  const response = await request.get(image!);
+  expect(response.headers()["content-type"]).toBe("image/jpeg");
+  const { default: sharp } = await import("sharp");
+  const { width, height, format } = await sharp(await response.body()).metadata();
+  expect({ width, height, format }).toEqual({ width: 1200, height: 630, format: "jpeg" });
+  expect((await request.get("/media/og/not-a-key.jpg")).status()).toBe(404);
+});
+
+test("a missing project renders the regular 404 page", async ({ page }) => {
+  const response = await page.goto("/projects/no-such-project");
+  expect(response?.status()).toBe(404);
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Page not found");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+});
+
+test("the dashboard and the API send X-Robots-Tag: noindex", async ({ request }) => {
+  const admin = await request.get("/admin", { maxRedirects: 0 });
+  expect(admin.headers()["x-robots-tag"]).toBe("noindex, nofollow");
+  expect((await request.get("/api/v1/health")).headers()["x-robots-tag"]).toBe("noindex, nofollow");
+  expect((await request.get("/about")).headers()["x-robots-tag"]).toBeUndefined();
+});
+
 test("API errors use the JSON shape", async ({ request }) => {
   const response = await request.get("/api/v1/nope");
   expect(response.status()).toBe(404);

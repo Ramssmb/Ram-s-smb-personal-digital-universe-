@@ -22,6 +22,11 @@ export function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("content-security-policy", csp);
   response.headers.set(REQUEST_ID_HEADER, requestId);
+  // The dashboard and the API are never indexed: a header covers JSON and
+  // redirects too, in addition to robots.txt and the pages' robots meta tag.
+  if (/^\/(admin|api)(\/|$)/.test(request.nextUrl.pathname)) {
+    response.headers.set("x-robots-tag", "noindex, nofollow");
+  }
   return response;
 }
 

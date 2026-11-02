@@ -3,34 +3,40 @@ import { notFound } from "next/navigation";
 
 import { JournalArticle } from "@/components/public/articles";
 import { JsonLd } from "@/components/public/content";
-import { plainExcerpt } from "@/lib/format";
+import { journalExcerpt } from "@/lib/format";
 import { getIdentity, getJournalEntry } from "@/server/content/public";
-import { absoluteUrl } from "@/server/seo";
+import { absoluteUrl, shareImageUrl, socialMetadata } from "@/server/seo";
 
 type Params = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const entry = await getJournalEntry((await params).slug);
-  if (!entry) return { title: "Entry not found" };
-  const description = describe(entry);
+  // Render the regular 404 page (with its own metadata), not an error shell.
+  if (!entry) notFound();
+  const description = journalExcerpt(entry);
   return {
     title: entry.title,
     description,
-    alternates: { canonical: `/journal/${entry.slug}` },
-    openGraph: {
-      type: "article",
+    ...(await socialMetadata({
       title: entry.title,
       description,
-      url: `/journal/${entry.slug}`,
+      path: `/journal/${entry.slug}`,
+      type: "article",
+      // The entry's first image; the default sharing image otherwise.
+      image: entry.images[0] ?? null,
       publishedTime: entry.entryDate,
-    },
+      modifiedTime: entry.updatedAt.toISOString(),
+    })),
   };
 }
 
 export default async function JournalEntryPage({ params }: Params) {
   const entry = await getJournalEntry((await params).slug);
   if (!entry) notFound();
-  const { profile } = await getIdentity();
+  const { profile, ogImage } = await getIdentity();
+  const image = entry.images[0] ?? ogImage;
+  const description = journalExcerpt(entry);
+  const url = absoluteUrl(`/journal/${entry.slug}`);
   return (
     <>
       <JsonLd
@@ -38,35 +44,19 @@ export default async function JournalEntryPage({ params }: Params) {
           "@context": "https://schema.org",
           "@type": "BlogPosting",
           headline: entry.title,
-          ...(describe(entry) ? { description: describe(entry) } : {}),
+          ...(description ? { description } : {}),
           datePublished: entry.entryDate,
           dateModified: entry.updatedAt.toISOString(),
-          url: absoluteUrl(`/journal/${entry.slug}`),
+          url,
+          mainEntityOfPage: url,
+          ...(image ? { image: absoluteUrl(shareImageUrl(image)) } : {}),
           ...(entry.tags.length ? { keywords: entry.tags.map((t) => t.name).join(", ") } : {}),
           ...(profile.displayName
-            ? { author: { "@type": "Person", name: profile.displayName } }
+            ? { author: { "@type": "Person", name: profile.displayName, url: absoluteUrl("/") } }
             : {}),
         }}
       />
       <JournalArticle entry={entry} />
     </>
   );
-}
-
-/** The summary, or else an excerpt of the first section that has content. */
-function describe(entry: {
-  summary: string;
-  learnedMd: string;
-  bodyMd: string;
-  builtMd: string;
-  problemsMd: string;
-}): string | undefined {
-  const source = [
-    entry.summary,
-    entry.learnedMd,
-    entry.bodyMd,
-    entry.builtMd,
-    entry.problemsMd,
-  ].find((s) => s.trim());
-  return source ? plainExcerpt(source) : undefined;
 }
