@@ -315,6 +315,7 @@ docs/                      design, API, security, deployment, audit
 | [docs/DEPLOYMENT_PREPARATION.md](docs/DEPLOYMENT_PREPARATION.md) | Before deploying: costs, decisions, checklist |
 | [docs/CONTENT_GUIDE.md](docs/CONTENT_GUIDE.md)                   | What to enter in the dashboard                |
 | [docs/FUNCTIONAL_AUDIT.md](docs/FUNCTIONAL_AUDIT.md)             | Functional audit of the running app (v0.4.0)  |
+| [docs/ACCESSIBILITY_TESTING.md](docs/ACCESSIBILITY_TESTING.md)   | NVDA test guide; browser and Windows checks   |
 | [docs/ROADMAP.md](docs/ROADMAP.md)                               | Phases and exit criteria                      |
 | [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md)                       | Status, measurements, known limitations       |
 | [CHANGELOG.md](CHANGELOG.md)                                     | Release notes                                 |
