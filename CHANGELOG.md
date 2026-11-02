@@ -30,6 +30,17 @@ All notable changes to this project. Dates are UTC.
 
 ### Fixed
 
+- **404 pages keep the site navigation:** unknown public addresses (and
+  missing projects or journal entries) now show the 404 message inside the
+  site layout, with the header, footer and a "Search the site" link, instead
+  of a bare page. The status code is still 404 and the page is `noindex`.
+- **Dashboard pages line up:** Account, Messages and the content lists were
+  centred at narrower widths than the other pages, so the page title jumped
+  sideways when moving between them. All dashboard pages now share the same
+  left edge; narrow content keeps its width.
+- The dashboard overview says the profile is "Complete" instead of "Set up",
+  which read like an instruction.
+- The browser icon is an "R" monogram for Ram's Dev Space (was a plain dot).
 - **Windows High Contrast:** primary, borderless and danger buttons have a
   transparent border, which forced-colours mode paints, so they keep a visible
   outline.

@@ -50,7 +50,7 @@ export default async function AccountPage() {
     recentSignInActivity(admin.id),
   ]);
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 *:max-w-3xl">
       <header>
         <h1 className="text-h1 font-semibold">Account and security</h1>
         <p className="mt-2 text-fg-muted">Signed in as {admin.email}.</p>

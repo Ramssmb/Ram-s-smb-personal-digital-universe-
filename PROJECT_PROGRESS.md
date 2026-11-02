@@ -1,6 +1,6 @@
 # Project progress
 
-Last updated: 2026-11-01 · Version 0.4.0
+Last updated: 2026-11-02 · Version 0.4.0 + unreleased changes (CHANGELOG.md)
 
 ## Is the website ready to launch?
 
@@ -9,6 +9,11 @@ launched.** It contains no real personal content yet (only seeded structure
 and the confirmed facts), and it is not deployed. Both need the owner — the
 remaining blockers are listed at the end. Passing CI says the code works; it
 does not say the site is ready for visitors.
+
+Confirmed branding (2026-11-02): display name **Ram**, brand **Ram's Dev
+Space**, tagline **Your Personal Digital Universe**, preferred domain
+**ramsdevspace.com** (not bought). Hosting (Vercel or Render) is decided
+later; Vercel + Neon support is ready on PR #1 (not merged).
 
 ### Requirement checklist
 
@@ -34,8 +39,8 @@ does not say the site is ready for visitors.
 | Responsive, light/dark, keyboard, accessible states                                                                               | ✅ Built, tested             | axe at three viewport sizes in both themes                               |
 | Monitoring                                                                                                                        | 🟡 Health endpoint + logs    | External uptime monitor and error alerting need the owner (free options) |
 | Deployment preparation and documentation                                                                                          | ✅ Prepared, CI smoke-tested | docs/DEPLOYMENT.md §11 launch checklist                                  |
-| **Real personal content entered and published**                                                                                   | ❌ Not started               | Owner action — docs/CONTENT_GUIDE.md                                     |
-| **Deployed to a public domain over HTTPS**                                                                                        | ❌ Not done                  | Owner action — needs server, domain, secrets                             |
+| **Real personal content entered and published**                                                                                   | 🟡 Started                   | Branding confirmed; everything else needs the owner (private worksheet)  |
+| **Deployed to a public domain over HTTPS**                                                                                        | ⏸ Out of scope for now       | Hosting decided after the website is finished                            |
 
 ## Status
 
@@ -134,17 +139,20 @@ in CI only.
 
 ## Actions needed from the owner (launch blockers)
 
-1. **Decide and pay for hosting:** a VPS and a domain (docs/DEPLOYMENT.md §2, §11).
-   Nothing has been bought or registered.
-2. **Choose an off-server backup destination** (§8).
-3. **Content:** follow docs/CONTENT_GUIDE.md — Profile, About, education years
+1. **Content (now):** answer the content questions one at a time; nothing is
+   published without approval.
+2. **Local account:** password changed 2026-11-02; turn on two-factor
+   authentication and test a recovery code.
+3. **Later — hosting:** Vercel (PR #1, docs/DEPLOYMENT_VERCEL.md) or a Docker
+   host (docs/DEPLOYMENT.md), plus the domain. Nothing bought or registered.
+4. **Content guide:** follow docs/CONTENT_GUIDE.md — Profile, About, education years
    and status, skills, projects, experience, certificates, links. Publish each
    when accurate.
-4. **After deployment:** create the owner account, turn on 2FA and store the
+5. **After deployment:** create the owner account, turn on 2FA and store the
    recovery codes offline, set up an external uptime monitor, run
    `restore.sh` once on the server.
-5. **Optional:** SMTP provider for message emails (§9); object storage (§7).
-6. **Local development:** enable WSL 2 (`wsl --install` as administrator) so
+6. **Optional:** SMTP provider for message emails (§9); object storage (§7).
+7. **Local development:** enable WSL 2 (`wsl --install` as administrator) so
    Docker Desktop can run the local database.
 
 ## History
