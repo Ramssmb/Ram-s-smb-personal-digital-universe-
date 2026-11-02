@@ -218,6 +218,20 @@ PostgreSQL and compares row counts**, then encrypts and uploads one file and
 keeps the newest 14. Nothing is uploaded as a workflow artifact — the
 repository is public. Until the settings exist it skips with a notice.
 
+The dump and restore check is `infra/backup/dump-and-verify.sh`; CI runs the
+same script against its test database on every pull request. Row counts are
+compared for your content tables; sign-ins, rate limits, unfinished uploads,
+the audit log and contact messages can change while the job runs and are not
+compared.
+
+> **Risk:** the backup job's write key can also delete files in the backup
+> bucket (it removes backups older than the newest 14), and Neon Object
+> Storage has no deletion lock. Someone who obtained that key could delete
+> every off-site backup. Keep it only in the GitHub `production` environment,
+> never on your PC (use the read-only key there), replace it if it may have
+> leaked, and keep the weekly copy on your PC (§6.3) — that copy is the one
+> the key cannot reach.
+
 ### 6.3 Weekly copy on your PC
 
 With the read-only backup credentials in your local `.env`

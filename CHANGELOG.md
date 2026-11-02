@@ -25,6 +25,8 @@ All notable changes to this project. Dates are UTC.
     database dump with a restore check, media copy with checksums, age
     encryption, upload to a separate bucket, 14 kept; never a public artifact.
     `npm run backup:fetch` downloads the newest one.
+    The dump and restore check (`infra/backup/dump-and-verify.sh`) dumps the
+    whole database and is run by CI on every pull request.
 
 ### Fixed
 

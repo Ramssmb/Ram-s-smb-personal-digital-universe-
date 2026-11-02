@@ -101,6 +101,14 @@ jobs:
           S3_TEST_ENDPOINT: http://localhost:8333
       - name: Data retention job runs
         run: npm run maintenance
+      - name: Vercel backup dump restores into an empty database
+        run: |
+          # The exact script .github/workflows/backup.yml runs against Neon.
+          PGPASSWORD=postgres_ci_only psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE backup_restore_check"
+          bash infra/backup/dump-and-verify.sh "$MIGRATION_DATABASE_URL" \
+            postgres://postgres:postgres_ci_only@localhost:5432/backup_restore_check \
+            "$RUNNER_TEMP/backup-check"
 
   e2e:
     name: Build and end-to-end tests
