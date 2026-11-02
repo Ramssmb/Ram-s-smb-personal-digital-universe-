@@ -33,9 +33,9 @@ export function FilterBar({
       method="get"
       action={action}
       role="search"
-      className="flex flex-col gap-3 md:flex-row md:items-end"
+      className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end"
     >
-      <label className="flex flex-1 flex-col gap-1.5 text-small font-medium">
+      <label className="flex flex-1 flex-col gap-1.5 text-small font-medium md:min-w-56">
         {searchLabel}
         <span className="relative">
           <Search

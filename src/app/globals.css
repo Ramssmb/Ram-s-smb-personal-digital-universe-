@@ -167,6 +167,15 @@
     min-height: 100dvh;
   }
 
+  /* With enlarged text a single long word ("certifications") can be wider than a
+     phone screen; let headings break it instead of scrolling sideways. */
+  h1,
+  h2,
+  h3 {
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+
   /* Visible keyboard focus everywhere (WCAG 2.4.7 / 2.4.11). */
   :focus-visible {
     outline: 2px solid var(--accent);

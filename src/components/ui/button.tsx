@@ -12,11 +12,14 @@ const base =
   "transition-[background-color,border-color,color,box-shadow] duration-150 ease-[var(--ease-standard)] " +
   "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50";
 
+// Every variant has a border. The transparent ones are invisible normally, but
+// Windows High Contrast (forced colors) paints them, so buttons keep an outline
+// when background colours are removed.
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-accent text-accent-fg hover:bg-accent-hover",
+  primary: "border border-transparent bg-accent text-accent-fg hover:bg-accent-hover",
   secondary: "border border-line-strong bg-surface text-fg hover:bg-surface-muted",
-  ghost: "text-fg hover:bg-surface-muted",
-  danger: "bg-danger text-danger-fg hover:bg-danger-hover",
+  ghost: "border border-transparent text-fg hover:bg-surface-muted",
+  danger: "border border-transparent bg-danger text-danger-fg hover:bg-danger-hover",
 };
 
 // Minimum 40px / 44px heights keep tap targets usable on touch screens.

@@ -212,7 +212,7 @@ export function SectionHeading({
   id?: string;
 }) {
   return (
-    <div className="mb-8 flex items-end justify-between gap-4">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
       <h2 id={id} className="text-h2 font-semibold">
         {title}
       </h2>

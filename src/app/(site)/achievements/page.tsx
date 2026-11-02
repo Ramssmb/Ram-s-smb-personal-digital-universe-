@@ -75,7 +75,7 @@ export default async function AchievementsPage({
                     id={`c-${cert.id}`}
                     className="flex scroll-mt-24 flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-6"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                       <div>
                         <h3 className="font-semibold">{cert.title}</h3>
                         <p className="text-small text-fg-muted">{cert.issuer}</p>
@@ -110,7 +110,7 @@ export default async function AchievementsPage({
                     id={`a-${item.id}`}
                     className="flex scroll-mt-24 flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-6"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                       <div>
                         <h3 className="font-semibold">{item.title}</h3>
                         {item.organization && (

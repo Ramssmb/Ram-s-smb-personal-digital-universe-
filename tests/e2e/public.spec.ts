@@ -213,6 +213,38 @@ test("form field borders contrast at least 3:1 in both themes", async ({
   }
 });
 
+test("at 200% text size every page fits and the menu stays reachable", async ({ page }) => {
+  // The same effect as a browser's or phone's "larger text" setting.
+  for (const path of PAGES) {
+    await page.goto(path);
+    await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
+    const result = await page.evaluate(() => {
+      const nav = [
+        document.querySelector<HTMLElement>('button[aria-label="Open menu"]'),
+        document.querySelector<HTMLElement>('header nav[aria-label="Primary"]'),
+      ].find((el) => el && el.getBoundingClientRect().width > 0)!;
+      const box = nav.getBoundingClientRect();
+      return {
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        navOnScreen: box.left >= 0 && box.right <= window.innerWidth,
+      };
+    });
+    expect(result, path).toEqual({ overflow: 0, navOnScreen: true });
+  }
+});
+
+test("buttons keep a visible outline in Windows High Contrast mode", async ({ page }) => {
+  await page.emulateMedia({ forcedColors: "active" });
+  await page.goto("/projects");
+  const apply = page.getByRole("button", { name: "Apply" });
+  const border = await apply.evaluate((b) => {
+    const s = getComputedStyle(b);
+    return { width: parseFloat(s.borderTopWidth), style: s.borderTopStyle };
+  });
+  expect(border.width).toBeGreaterThan(0);
+  expect(border.style).toBe("solid");
+});
+
 test("the current page is marked by more than colour", async ({ page }) => {
   await page.goto("/projects");
   const menuButton = page.getByRole("button", { name: "Open menu" });

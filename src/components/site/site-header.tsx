@@ -30,10 +30,7 @@ export function SiteHeader({ siteName }: { siteName: string | null }) {
             <Search aria-hidden="true" className="size-[18px]" />
           </Link>
           <ThemeToggle />
-          <Link
-            href="/contact"
-            className={buttonClasses("secondary", "sm", "ml-1 hidden lg:inline-flex")}
-          >
+          <Link href="/contact" className={buttonClasses("secondary", "sm", "ml-1 max-lg:hidden")}>
             Contact
           </Link>
           <MobileNav items={allNav} />

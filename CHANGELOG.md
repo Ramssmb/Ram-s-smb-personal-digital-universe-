@@ -6,6 +6,18 @@ All notable changes to this project. Dates are UTC.
 
 ### Fixed
 
+- **Windows High Contrast:** primary, borderless and danger buttons have a
+  transparent border, which forced-colours mode paints, so they keep a visible
+  outline.
+- **Large text on phones:** the header's Contact button (and the dashboard's
+  "View site" link) were meant to be hidden on small screens but never were —
+  `hidden` lost to the button's built-in `inline-flex`; now `max-lg:hidden` /
+  `max-sm:hidden`. Section headings, skill and achievement card rows and the
+  filter bar now wrap, and headings break over-long words, so pages fit at
+  200 % text with the menu reachable.
+- A unit test that tampers with encrypted 2FA secrets failed about once in 64
+  runs (the replacement character could equal the original); it now always
+  changes it.
 - **Accessibility:** form field borders now contrast at least 3:1 in both themes
   (were 1.44:1 light and 1.59:1 dark; new `--line-input` token).
 - The media library's Save, Replace file and Delete controls include the file

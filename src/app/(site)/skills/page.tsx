@@ -93,7 +93,7 @@ export default async function SkillsPage({
                     id={skill.slug}
                     className="flex scroll-mt-24 flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-5"
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                       <h3 className="font-semibold">{skill.name}</h3>
                       <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
                         <Badge tone={STATUS_TONE[skill.learningStatus]}>

@@ -53,7 +53,9 @@ describe("TOTP", () => {
     expect(decryptSecret(stored)).toBe(RFC_SECRET);
     expect(encryptSecret(RFC_SECRET)).not.toBe(stored); // random IV
     const [iv, tag, data] = stored.split(".");
-    const flipped = `${iv}.${tag}.${data!.slice(0, -2)}${data!.endsWith("A") ? "B" : "A"}${data!.slice(-1)}`;
+    // Always change a character (picking by the last one left it unchanged ~1 in 64 runs).
+    const swap = data!.at(-2) === "A" ? "B" : "A";
+    const flipped = `${iv}.${tag}.${data!.slice(0, -2)}${swap}${data!.slice(-1)}`;
     expect(() => decryptSecret(flipped)).toThrow();
   });
 

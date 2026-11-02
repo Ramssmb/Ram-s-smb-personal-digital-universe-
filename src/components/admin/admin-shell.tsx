@@ -192,7 +192,7 @@ export function AdminShell({
               href="/"
               target="_blank"
               rel="noopener"
-              className={buttonClasses("ghost", "sm", "hidden sm:inline-flex")}
+              className={buttonClasses("ghost", "sm", "max-sm:hidden")}
             >
               View site
               <ExternalIcon aria-hidden="true" className="size-3.5" />
