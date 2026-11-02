@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 
 import { api, ApiError } from "./api";
 import { MediaThumb, UploadButton } from "./media-picker";
+import { sendFile } from "./upload";
 
 interface Item {
   id: string;
@@ -67,10 +68,8 @@ function MediaCard({ item }: { item: Item }) {
   async function replace(file: File) {
     setBusy(true);
     setMessage(null);
-    const body = new FormData();
-    body.set("file", file);
     try {
-      await api(`/api/v1/admin/media/${item.id}/file`, { method: "PUT", body });
+      await sendFile(file, { mediaId: item.id });
       setMessage({ ok: true, text: "File replaced everywhere it is used." });
       router.refresh();
     } catch (thrown) {

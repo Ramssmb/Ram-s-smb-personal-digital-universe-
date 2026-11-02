@@ -167,13 +167,17 @@ async function storeFile(
   }
 }
 
-/** Stores a new upload and creates its media row. */
+/**
+ * Stores a new upload and creates its media row. Direct uploads were already
+ * rate-limited when their signed URL was issued (`rateLimited: false`).
+ */
 export async function uploadMedia(
   file: File,
   meta: unknown,
   admin: SessionUser,
+  { rateLimited = true }: { rateLimited?: boolean } = {},
 ): Promise<MediaRow> {
-  await enforce(RULES.uploadsPerUser, admin.id);
+  if (rateLimited) await enforce(RULES.uploadsPerUser, admin.id);
   const { access, altText } = uploadMetaSchema.parse(meta);
   const { stored, written } = await storeFile(file, access);
   try {
@@ -199,8 +203,9 @@ export async function replaceMediaFile(
   id: string,
   file: File,
   admin: SessionUser,
+  { rateLimited = true }: { rateLimited?: boolean } = {},
 ): Promise<MediaRow> {
-  await enforce(RULES.uploadsPerUser, admin.id);
+  if (rateLimited) await enforce(RULES.uploadsPerUser, admin.id);
   const current = await getMedia(id);
   const access = current.access as Access;
   const { stored, written } = await storeFile(file, access);

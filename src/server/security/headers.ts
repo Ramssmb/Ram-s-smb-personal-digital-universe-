@@ -33,7 +33,27 @@ export function createNonce(): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
-export function contentSecurityPolicy(nonce: string, development: boolean): string {
+/**
+ * The object-storage origin the browser may send files to, when direct uploads
+ * are on (UPLOAD_MODE=direct); otherwise null. Read from the raw environment
+ * because the proxy runs before (and without) full configuration validation.
+ */
+export function directUploadOrigin(
+  source: Record<string, string | undefined> = process.env,
+): string | null {
+  if (source.UPLOAD_MODE !== "direct" || !source.S3_ENDPOINT) return null;
+  try {
+    return new URL(source.S3_ENDPOINT).origin;
+  } catch {
+    return null;
+  }
+}
+
+export function contentSecurityPolicy(
+  nonce: string,
+  development: boolean,
+  uploadOrigin: string | null = null,
+): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
     // 'strict-dynamic' lets nonce-approved Next.js scripts load their chunks.
@@ -48,7 +68,11 @@ export function contentSecurityPolicy(nonce: string, development: boolean): stri
     "style-src": ["'self'", "'unsafe-inline'"],
     "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'"],
-    "connect-src": ["'self'", ...(development ? ["ws:"] : [])],
+    "connect-src": [
+      "'self'",
+      ...(uploadOrigin ? [uploadOrigin] : []),
+      ...(development ? ["ws:"] : []),
+    ],
     "object-src": ["'none'"],
     "base-uri": ["'none'"],
     "form-action": ["'self'"],

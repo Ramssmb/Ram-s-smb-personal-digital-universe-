@@ -34,3 +34,5 @@ playwright/.auth/
 .e2e-storage/
 
 .backup-test/
+# encrypted backups downloaded by npm run backup:fetch
+backups/

@@ -1,0 +1,163 @@
+name: Backup
+
+# Off-site backup for the Vercel + Neon deployment (docs/DEPLOYMENT_VERCEL.md §6).
+# Daily: dump the database, copy the media files, prove the dump restores into a
+# fresh PostgreSQL, then encrypt everything with an age public key and upload it
+# to a separate backup bucket. The private key never leaves the owner's PC.
+#
+# This repository is public, so its Actions logs and artifacts are public too:
+# nothing here is uploaded as an artifact, and plaintext never leaves the runner.
+# Until the secrets below exist, the job skips with a notice.
+
+on:
+  schedule:
+    - cron: "30 21 * * *" # 03:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Encrypted off-site backup
+    runs-on: ubuntu-24.04
+    # Secrets live in the "production" environment, not at repository level.
+    environment: production
+    timeout-minutes: 30
+    env:
+      # Direct (unpooled) Neon URL for the read-only backup role.
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      # Media bucket, read-only credentials.
+      MEDIA_S3_ENDPOINT: ${{ secrets.MEDIA_S3_ENDPOINT }}
+      MEDIA_S3_REGION: ${{ secrets.MEDIA_S3_REGION }}
+      MEDIA_S3_BUCKET: ${{ secrets.MEDIA_S3_BUCKET }}
+      MEDIA_S3_ACCESS_KEY_ID: ${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}
+      MEDIA_S3_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}
+      # Backup bucket in a separate project, write credentials.
+      BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+      BACKUP_S3_REGION: ${{ secrets.BACKUP_S3_REGION }}
+      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+      BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      # age public key (not secret), e.g. age1...
+      BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      BACKUP_KEEP: "14"
+    services:
+      restore:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restore-test-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          missing=""
+          for name in BACKUP_DATABASE_URL MEDIA_S3_ENDPOINT MEDIA_S3_BUCKET MEDIA_S3_ACCESS_KEY_ID \
+                      MEDIA_S3_SECRET_ACCESS_KEY BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET \
+                      BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY BACKUP_AGE_RECIPIENT; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Backup not configured yet (missing:$missing). Skipping."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install age
+        if: steps.config.outputs.ready == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Dump the database
+        if: steps.config.outputs.ready == 'true'
+        run: |
+          umask 077
+          mkdir -p work/media
+          # pg_dump 17 from the official image; custom format, no owners or grants,
+          # so it restores into any database. Includes Drizzle's migration journal.
+          docker run --rm --network host -v "$PWD/work:/work" postgres:17 \
+            pg_dump --format=custom --no-owner --no-privileges \
+              --schema=public --schema=drizzle \
+              --file=/work/database.dump "$BACKUP_DATABASE_URL"
+
+      - name: Copy media files
+        if: steps.config.outputs.ready == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.MEDIA_S3_REGION || 'auto' }}
+        run: |
+          aws configure set default.s3.addressing_style path
+          # Unfinished direct uploads (incoming/) are not part of the site.
+          aws s3 sync "s3://$MEDIA_S3_BUCKET/" work/media/ \
+            --endpoint-url "$MEDIA_S3_ENDPOINT" --exclude "incoming/*" --only-show-errors
+          (cd work/media && find . -type f -print0 | sort -z | xargs -0 -r sha256sum) > work/media.sha256
+          echo "Media files: $(wc -l < work/media.sha256)"
+
+      - name: Prove the dump restores
+        if: steps.config.outputs.ready == 'true'
+        env:
+          RESTORE_URL: postgres://postgres:restore-test-only@localhost:5432/postgres
+        run: |
+          # Row counts of every table, in a stable order.
+          counts() {
+            docker run --rm --network host postgres:17 psql "$1" -At -c "
+              SELECT table_schema || '.' || table_name || ' ' ||
+                (xpath('/row/c/text()', query_to_xml(format('SELECT count(*) AS c FROM %I.%I',
+                  table_schema, table_name), false, true, '')))[1]::text
+              FROM information_schema.tables
+              WHERE table_schema IN ('public', 'drizzle') AND table_type = 'BASE TABLE'
+                AND table_name NOT IN ('rate_limits', 'sessions', 'upload_intents', 'audit_log')
+              ORDER BY 1"
+          }
+          docker run --rm --network host -v "$PWD/work:/work" postgres:17 \
+            pg_restore --no-owner --no-privileges --exit-on-error \
+              --dbname="$RESTORE_URL" /work/database.dump
+          counts "$BACKUP_DATABASE_URL" > work/source-counts.txt
+          counts "$RESTORE_URL" > work/restored-counts.txt
+          # Busy tables (sign-ins, rate limits) change between dump and count; the
+          # rest only change when the owner edits content.
+          if ! diff -u work/source-counts.txt work/restored-counts.txt; then
+            echo "::error::Restored row counts differ from the live database."
+            exit 1
+          fi
+          echo "Restore check passed for $(wc -l < work/restored-counts.txt) tables."
+
+      - name: Encrypt and upload
+        if: steps.config.outputs.ready == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_S3_REGION || 'auto' }}
+        run: |
+          umask 077
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          name="site-backup-$stamp.tar.gz.age"
+          git_sha="${GITHUB_SHA}"
+          printf 'created=%s\ncommit=%s\n' "$stamp" "$git_sha" > work/manifest.txt
+          tar -C work -czf - database.dump media media.sha256 restored-counts.txt manifest.txt \
+            | age --encrypt --recipient "$BACKUP_AGE_RECIPIENT" --output "$name"
+          aws configure set default.s3.addressing_style path
+          aws s3 cp "$name" "s3://$BACKUP_S3_BUCKET/backups/$name" \
+            --endpoint-url "$BACKUP_S3_ENDPOINT" --only-show-errors
+          echo "Uploaded $name ($(du -h "$name" | cut -f1))."
+
+          # Keep the newest $BACKUP_KEEP backups (names sort by time).
+          aws s3 ls "s3://$BACKUP_S3_BUCKET/backups/" --endpoint-url "$BACKUP_S3_ENDPOINT" \
+            | awk '{print $4}' | grep '^site-backup-' | sort -r | tail -n +"$((BACKUP_KEEP + 1))" \
+            | while read -r old; do
+                aws s3 rm "s3://$BACKUP_S3_BUCKET/backups/$old" \
+                  --endpoint-url "$BACKUP_S3_ENDPOINT" --only-show-errors
+                echo "Removed old backup $old"
+              done
+
+      - name: Remove plaintext
+        if: always()
+        run: rm -rf work ./*.age

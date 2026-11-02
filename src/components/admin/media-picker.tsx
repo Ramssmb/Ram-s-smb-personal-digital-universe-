@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 import { api, ApiError } from "./api";
+import { sendFile } from "./upload";
 
 export interface MediaSummary {
   id: string;
@@ -71,12 +72,8 @@ export function UploadButton({
   async function upload(file: File) {
     setBusy(true);
     setError(null);
-    const body = new FormData();
-    body.set("file", file);
-    body.set("access", access);
-    body.set("altText", altText);
     try {
-      const { item } = await api<{ item: MediaSummary }>("/api/v1/admin/media", { body });
+      const item = await sendFile(file, { access, altText });
       setAltText("");
       onUploaded(item);
     } catch (thrown) {

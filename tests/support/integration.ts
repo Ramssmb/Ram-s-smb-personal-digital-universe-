@@ -17,6 +17,7 @@ const TABLES = [
   "rate_limits",
   "audit_log",
   "sessions",
+  "upload_intents",
   "users",
   "contact_messages",
   "project_skills",

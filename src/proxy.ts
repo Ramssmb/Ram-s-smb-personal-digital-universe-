@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { contentSecurityPolicy, createNonce } from "@/server/security/headers";
+import { contentSecurityPolicy, createNonce, directUploadOrigin } from "@/server/security/headers";
 import { REQUEST_ID_HEADER, resolveRequestId } from "@/server/security/request-id";
 
 /**
@@ -10,7 +10,11 @@ import { REQUEST_ID_HEADER, resolveRequestId } from "@/server/security/request-i
  */
 export function proxy(request: NextRequest) {
   const nonce = createNonce();
-  const csp = contentSecurityPolicy(nonce, process.env.NODE_ENV === "development");
+  const csp = contentSecurityPolicy(
+    nonce,
+    process.env.NODE_ENV === "development",
+    directUploadOrigin(),
+  );
   const requestId = resolveRequestId(request.headers.get(REQUEST_ID_HEADER));
 
   const requestHeaders = new Headers(request.headers);

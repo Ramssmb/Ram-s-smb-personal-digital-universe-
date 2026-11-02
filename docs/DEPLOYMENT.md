@@ -312,3 +312,8 @@ managed PostgreSQL 17 (run `npm run db:migrate` with the owner role as a
 release step; the runtime uses the `site_app` role), and set `TRUST_PROXY_HOPS`
 to the number of proxies in front of the app. This path is documented but not
 tested; the VPS setup above is the tested deployment.
+
+For **Vercel + Neon** (the chosen free hosting) follow
+[DEPLOYMENT_VERCEL.md](DEPLOYMENT_VERCEL.md): direct-to-storage uploads, a
+daily cron route instead of the hourly timer, and an encrypted off-site backup
+workflow.

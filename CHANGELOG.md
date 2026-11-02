@@ -4,6 +4,28 @@ All notable changes to this project. Dates are UTC.
 
 ## [Unreleased]
 
+### Added
+
+- **Vercel + Neon support** (docs/DEPLOYMENT_VERCEL.md), off by default so the
+  Docker deployment is unchanged:
+  - **Direct uploads** (`UPLOAD_MODE=direct`): the browser puts the file into
+    the bucket with a 5-minute signed URL for one random `incoming/` key, size
+    and type included in the signature; the app then checks the stored size,
+    runs the usual validation and image processing and deletes the incoming
+    object. Single use, owner only, 15 MB limit kept. New `upload_intents`
+    table (migration `0003`).
+  - `GET /api/cron/maintenance` for Vercel Cron (bearer `CRON_SECRET`), daily
+    in `vercel.json`; the in-process hourly timer is skipped on Vercel.
+    Maintenance also removes unfinished direct uploads.
+  - Vercel preview deployments accept their own URLs as request origins
+    (preview only).
+  - `DATABASE_PREPARE` for transaction-mode poolers; the CSP allows the
+    storage origin only when direct uploads are on.
+  - Encrypted daily off-site backup workflow (`.github/workflows/backup.yml`):
+    database dump with a restore check, media copy with checksums, age
+    encryption, upload to a separate bucket, 14 kept; never a public artifact.
+    `npm run backup:fetch` downloads the newest one.
+
 ### Fixed
 
 - **Windows High Contrast:** primary, borderless and danger buttons have a

@@ -6,6 +6,7 @@ import { pruneSessions } from "@/server/auth/session";
 import { db } from "@/server/db/client";
 import { auditLog, contactMessages } from "@/server/db/schema";
 import { logger } from "@/server/logger";
+import { pruneUploadIntents } from "@/server/media/direct-upload";
 import { pruneRateLimits } from "@/server/security/rate-limit";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -17,15 +18,18 @@ export const RETENTION = {
 /**
  * Removes data that is no longer needed, so tables do not grow without bound:
  * finished rate-limit windows, sessions past their absolute lifetime, audit
- * entries older than a year and messages marked as spam more than 30 days ago.
+ * entries older than a year, messages marked as spam more than 30 days ago and
+ * direct uploads that were started but never finished.
  * Real messages (new, read, archived) are kept until the owner deletes them.
  */
 export async function runMaintenance(now = new Date()): Promise<{
   auditLog: number;
   spam: number;
+  uploads: number;
 }> {
   await pruneRateLimits();
   await pruneSessions();
+  const uploads = await pruneUploadIntents(now);
   const audits = await db()
     .delete(auditLog)
     .where(lt(auditLog.createdAt, new Date(now.getTime() - RETENTION.auditLogDays * DAY)))
@@ -39,7 +43,7 @@ export async function runMaintenance(now = new Date()): Promise<{
       ),
     )
     .returning({ id: contactMessages.id });
-  return { auditLog: audits.length, spam: spam.length };
+  return { auditLog: audits.length, spam: spam.length, uploads };
 }
 
 /** Runs maintenance now and then hourly in this process. Errors are logged, never thrown. */

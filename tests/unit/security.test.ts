@@ -2,8 +2,11 @@ import { safeExternalUrl, safeMailto } from "@/lib/safe-url";
 import {
   contentSecurityPolicy,
   createNonce,
+  directUploadOrigin,
   staticSecurityHeaders,
 } from "@/server/security/headers";
+import { parseServerEnv } from "@/server/env";
+import { allowedOrigins } from "@/server/security/origin";
 
 describe("contentSecurityPolicy", () => {
   const production = contentSecurityPolicy("abc123", false);
@@ -25,6 +28,46 @@ describe("contentSecurityPolicy", () => {
     const development = contentSecurityPolicy("abc123", true);
     expect(development).toContain("'unsafe-eval'");
     expect(development).not.toContain("upgrade-insecure-requests");
+  });
+
+  it("lets the browser reach object storage only when direct uploads are on", () => {
+    expect(production).toContain("connect-src 'self';");
+    expect(directUploadOrigin({ S3_ENDPOINT: "https://s3.example.test/x" })).toBeNull();
+    const origin = directUploadOrigin({
+      UPLOAD_MODE: "direct",
+      S3_ENDPOINT: "https://s3.example.test/x",
+    });
+    expect(origin).toBe("https://s3.example.test");
+    expect(contentSecurityPolicy("abc123", false, origin)).toContain(
+      "connect-src 'self' https://s3.example.test;",
+    );
+  });
+});
+
+describe("allowedOrigins", () => {
+  const base = {
+    DATABASE_URL: "postgres://a:b@127.0.0.1/db",
+    SITE_URL: "https://ramsdevspace.com",
+    APP_SECRET: "x".repeat(32),
+    VERCEL_URL: "site-abc123.vercel.app",
+    VERCEL_BRANCH_URL: "site-git-main.vercel.app",
+  };
+
+  it("accepts only the site origin in production", () => {
+    expect(allowedOrigins(parseServerEnv({ ...base, VERCEL_ENV: "production" }))).toEqual([
+      "https://ramsdevspace.com",
+    ]);
+    expect(allowedOrigins(parseServerEnv({ ...base, VERCEL_URL: undefined }))).toEqual([
+      "https://ramsdevspace.com",
+    ]);
+  });
+
+  it("adds a preview deployment's own URLs on previews only", () => {
+    expect(allowedOrigins(parseServerEnv({ ...base, VERCEL_ENV: "preview" }))).toEqual([
+      "https://ramsdevspace.com",
+      "https://site-abc123.vercel.app",
+      "https://site-git-main.vercel.app",
+    ]);
   });
 });
 

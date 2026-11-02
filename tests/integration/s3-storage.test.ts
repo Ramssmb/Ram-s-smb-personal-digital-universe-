@@ -5,10 +5,14 @@ import { GET as publicMedia } from "@/app/media/[...path]/route";
 import { PUT as mediaReplace } from "@/app/api/v1/admin/media/[id]/file/route";
 import { DELETE as mediaDelete, PATCH as mediaPatch } from "@/app/api/v1/admin/media/[id]/route";
 import { POST as mediaUpload } from "@/app/api/v1/admin/media/route";
+import { POST as completeUpload } from "@/app/api/v1/admin/media/uploads/[id]/complete/route";
+import { POST as startUpload } from "@/app/api/v1/admin/media/uploads/route";
 import { putFile } from "@/server/media/storage";
+import { runMaintenance } from "@/server/services/maintenance";
 
 import {
   createAdmin,
+  ownerSql,
   request,
   resetDatabase,
   routeContext,
@@ -32,6 +36,8 @@ if (endpoint) {
   process.env.S3_BUCKET = bucket;
   process.env.S3_ACCESS_KEY_ID = credentials.accessKeyId;
   process.env.S3_SECRET_ACCESS_KEY = credentials.secretAccessKey;
+  // Direct uploads on: form uploads (the routes above) keep working alongside.
+  process.env.UPLOAD_MODE = "direct";
 }
 
 const client = new AwsClient({ ...credentials, region: "us-east-1", service: "s3" });
@@ -126,5 +132,128 @@ describe.skipIf(!endpoint)("S3-compatible media storage", () => {
     const key = "2026/11/00000000-0000-4000-8000-000000000001.webp";
     await putFile("public", key, new Uint8Array([1, 2, 3]));
     await expect(putFile("public", key, new Uint8Array([4, 5, 6]))).rejects.toThrow(/HTTP 412/);
+  });
+
+  describe("direct uploads (signed URL, then complete)", () => {
+    async function start(json: Record<string, unknown>) {
+      return startUpload(
+        request("POST", "/api/v1/admin/media/uploads", { cookie: admin.cookie, json }),
+        routeContext(),
+      );
+    }
+
+    async function begin(data: Uint8Array, contentType: string, extra = {}) {
+      const response = await start({
+        filename: "photo.png",
+        size: data.length,
+        contentType,
+        ...extra,
+      });
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.mode).toBe("direct");
+      return body as { id: string; url: string; headers: Record<string, string> };
+    }
+
+    const put = (url: string, headers: Record<string, string>, data: Uint8Array) =>
+      fetch(url, { method: "PUT", headers, body: new Uint8Array(data) });
+
+    const complete = (id: string, cookie = admin.cookie) =>
+      completeUpload(request("POST", "/x", { cookie }), routeContext({ id }));
+
+    it("uploads through a signed URL and processes the file like a form upload", async () => {
+      const data = await png(1200, 600);
+      const intent = await begin(data, "image/png", { altText: "Direct", access: "private" });
+      expect(intent.url).toContain(`/incoming/${intent.id}?`);
+      expect(intent.url).toContain("X-Amz-Expires=300");
+      expect((await put(intent.url, intent.headers, data)).ok).toBe(true);
+
+      const response = await complete(intent.id);
+      expect(response.status).toBe(200);
+      const { item } = await response.json();
+      expect(item).toMatchObject({ kind: "image", access: "private", altText: "Direct" });
+      expect(await objectExists(`private/${item.storageKey}`)).toBe(true);
+      expect(await objectExists(`incoming/${intent.id}`)).toBe(false);
+
+      // Single use: the intent is gone.
+      expect((await complete(intent.id)).status).toBe(404);
+    });
+
+    it("replaces a media item's file in place", async () => {
+      const original = await upload(await png(600, 300), "a.png");
+      const data = await png(400, 200);
+      const intent = await begin(data, "image/png", { mediaId: original.id });
+      expect((await put(intent.url, intent.headers, data)).ok).toBe(true);
+      const { item } = await (await complete(intent.id)).json();
+      expect(item.id).toBe(original.id);
+      expect(item.width).toBe(400);
+      expect(await objectExists(`public/${original.storageKey}`)).toBe(false);
+      expect(await objectExists(`public/${item.storageKey}`)).toBe(true);
+    });
+
+    it("refuses files the store did not receive as signed", async () => {
+      const data = await png(300, 300);
+      const intent = await begin(data, "image/png");
+      // A different size than the one signed.
+      const bigger = new Uint8Array([...data, 0, 0, 0]);
+      expect((await put(intent.url, intent.headers, bigger)).ok).toBe(false);
+      // Nothing arrived, so completing fails and leaves nothing behind.
+      const response = await complete(intent.id);
+      expect(response.status).toBe(400);
+      expect(await objectExists(`incoming/${intent.id}`)).toBe(false);
+    });
+
+    it("validates the content, not just the declared type", async () => {
+      const fake = new TextEncoder().encode("not really an image, just text");
+      const intent = await begin(fake, "image/png");
+      expect((await put(intent.url, intent.headers, fake)).ok).toBe(true);
+      expect((await complete(intent.id)).status).toBe(415);
+      expect(await objectExists(`incoming/${intent.id}`)).toBe(false);
+      expect(await ownerSql`SELECT id FROM media_assets`).toHaveLength(0);
+    });
+
+    it("checks type and size before issuing a URL", async () => {
+      expect((await start({ filename: "a.gif", size: 10, contentType: "image/gif" })).status).toBe(
+        415,
+      );
+      expect(
+        (await start({ filename: "a.png", size: 10 * 1024 * 1024 + 1, contentType: "image/png" }))
+          .status,
+      ).toBe(413);
+      expect(
+        (
+          await start({
+            filename: "a.pdf",
+            size: 15 * 1024 * 1024 + 1,
+            contentType: "application/pdf",
+          })
+        ).status,
+      ).toBe(413);
+      const ok = await start({
+        filename: "a.pdf",
+        size: 15 * 1024 * 1024,
+        contentType: "application/pdf",
+      });
+      expect(ok.status).toBe(200);
+    });
+
+    it("does not let another session complete someone else's upload", async () => {
+      const data = await png(200, 200);
+      const intent = await begin(data, "image/png");
+      expect((await put(intent.url, intent.headers, data)).ok).toBe(true);
+      const other = await createAdmin();
+      expect((await complete(intent.id, other.cookie)).status).toBe(404);
+      expect((await complete(intent.id)).status).toBe(200);
+    });
+
+    it("cleans up uploads that were never completed", async () => {
+      const data = await png(200, 200);
+      const intent = await begin(data, "image/png");
+      expect((await put(intent.url, intent.headers, data)).ok).toBe(true);
+      await ownerSql`UPDATE upload_intents SET expires_at = now() - interval '1 minute'`;
+      expect((await runMaintenance()).uploads).toBe(1);
+      expect(await objectExists(`incoming/${intent.id}`)).toBe(false);
+      expect((await complete(intent.id)).status).toBe(404);
+    });
   });
 });
