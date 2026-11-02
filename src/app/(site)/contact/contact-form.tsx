@@ -65,7 +65,10 @@ export function ContactForm({ token }: { token: string }) {
         className="flex flex-col items-start gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-8"
       >
         <CheckCircle2 aria-hidden="true" className="size-8 text-success" />
-        <h2 className="text-h3 font-semibold">Message sent</h2>
+        {/* The form is gone: move focus here so keyboard users keep their place. */}
+        <h2 ref={(heading) => heading?.focus()} tabIndex={-1} className="text-h3 font-semibold">
+          Message sent
+        </h2>
         <p className="text-fg-muted">Thank you for writing. I will reply by email.</p>
       </div>
     );

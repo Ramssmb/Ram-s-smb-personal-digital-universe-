@@ -173,6 +173,86 @@ test("a missing project renders the regular 404 page", async ({ page }) => {
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
 });
 
+test("form field borders contrast at least 3:1 in both themes", async ({
+  page,
+  context,
+  baseURL,
+}) => {
+  for (const theme of ["light", "dark"] as const) {
+    await context.addCookies([{ name: "theme", value: theme, url: baseURL! }]);
+    await page.goto("/contact");
+    const ratios = await page.evaluate(() => {
+      const rgb = (c: string) =>
+        c
+          .match(/[\d.]+/g)!
+          .slice(0, 3)
+          .map(Number);
+      const lum = (c: string) => {
+        const [r, g, b] = rgb(c).map((v) => {
+          const s = v / 255;
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        });
+        return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+      };
+      const ratio = (a: string, b: string) => {
+        const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
+        return (x! + 0.05) / (y! + 0.05);
+      };
+      const page = getComputedStyle(document.body).backgroundColor;
+      return [
+        ...document.querySelectorAll<HTMLElement>("main input[name=name], main textarea"),
+      ].map((field) => {
+        const style = getComputedStyle(field);
+        return Math.min(
+          ratio(style.borderTopColor, page),
+          ratio(style.borderTopColor, style.backgroundColor),
+        );
+      });
+    });
+    for (const r of ratios) expect(r, theme).toBeGreaterThanOrEqual(3);
+  }
+});
+
+test("the current page is marked by more than colour", async ({ page }) => {
+  await page.goto("/projects");
+  const menuButton = page.getByRole("button", { name: "Open menu" });
+  if (await menuButton.isVisible()) await menuButton.click();
+  const current = page.locator('nav[aria-label="Primary"] a[aria-current="page"]').filter({
+    visible: true,
+  });
+  await expect(current).toHaveText("Projects");
+  expect(await current.evaluate((a) => getComputedStyle(a).textDecorationLine)).toContain(
+    "underline",
+  );
+});
+
+test("a slow page load shows progress, and contact success receives focus", async ({ page }) => {
+  // Hold the next page for a moment so the progress indicator has time to appear.
+  await page.route(/\/skills(\?|$)/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.goto("/");
+  await page
+    .getByRole("navigation", { name: "Footer" })
+    .getByRole("link", { name: "Skills" })
+    .click();
+  await expect(page.getByRole("status").filter({ hasText: "Loading page…" })).toBeAttached();
+  await expect(page).toHaveURL(/\/skills$/);
+  await expect(page.getByRole("status").filter({ hasText: "Loading page…" })).toHaveCount(0);
+
+  // The message is answered locally; nothing reaches the server.
+  await page.route("**/api/v1/contact", (route) =>
+    route.fulfill({ status: 202, contentType: "application/json", body: '{"ok":true}' }),
+  );
+  await page.goto("/contact");
+  await page.getByLabel("Name").fill("Keyboard tester");
+  await page.getByLabel("Email").fill("tester@example.test");
+  await page.getByLabel(/^Message/).fill("Checking where focus goes after sending.");
+  await page.getByRole("button", { name: /send/i }).click();
+  await expect(page.getByRole("heading", { name: "Message sent" })).toBeFocused();
+});
+
 test("the dashboard and the API send X-Robots-Tag: noindex", async ({ request }) => {
   const admin = await request.get("/admin", { maxRedirects: 0 });
   expect(admin.headers()["x-robots-tag"]).toBe("noindex, nofollow");

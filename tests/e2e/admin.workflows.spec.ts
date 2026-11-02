@@ -136,7 +136,7 @@ test("unpublish, visibility and permanent delete work through the UI", async ({ 
 
   await page.goto(editUrl);
   await page.getByRole("button", { name: "Delete permanently" }).click();
-  const dialog = page.getByRole("dialog", { name: /Delete this resource/ });
+  const dialog = page.getByRole("alertdialog", { name: /Delete this resource/ });
   await dialog.getByRole("button", { name: "Delete permanently" }).click();
   await expect(page).toHaveURL(/\/admin\/content\/resources\?deleted=1/);
   await expect(page.getByText("Deleted.")).toBeVisible();
@@ -333,6 +333,21 @@ test("media: a file can be replaced from the library", async ({ page }) => {
   // Same item: its alt text survived the replacement.
   await expect(replaced.getByLabel("Alt text")).toHaveValue("Solid blue test image");
   await expect(replaced.getByText("800×400")).toBeVisible();
+});
+
+test("media controls name their file; delete asks first, focused on Cancel", async ({ page }) => {
+  await page.goto("/admin/media?q=red");
+  const card = page.getByRole("listitem").filter({ hasText: "red.png" });
+  await expect(card.getByRole("button", { name: "Save details of red.png" })).toBeVisible();
+  const remove = card.getByRole("button", { name: "Delete red.png" });
+  await remove.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("alertdialog", { name: "Delete red.png?" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(remove).toBeFocused();
 });
 
 test("a certification linked to a skill appears on the skills page", async ({ page }) => {

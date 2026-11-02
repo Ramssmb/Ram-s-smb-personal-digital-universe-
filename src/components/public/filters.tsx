@@ -47,7 +47,7 @@ export function FilterBar({
             name="q"
             defaultValue={q}
             maxLength={100}
-            className="h-11 w-full rounded-[var(--radius-input)] border border-line-strong bg-surface pr-3 pl-9 text-body font-normal"
+            className="h-11 w-full rounded-[var(--radius-input)] border border-line-input bg-surface pr-3 pl-9 text-body font-normal"
           />
         </span>
       </label>
@@ -57,7 +57,7 @@ export function FilterBar({
           <select
             name={select.name}
             defaultValue={select.value ?? ""}
-            className="h-11 min-w-44 rounded-[var(--radius-input)] border border-line-strong bg-surface px-3 text-body font-normal"
+            className="h-11 min-w-44 rounded-[var(--radius-input)] border border-line-input bg-surface px-3 text-body font-normal"
           >
             <option value="">{select.allLabel}</option>
             {select.options.map((option) => (

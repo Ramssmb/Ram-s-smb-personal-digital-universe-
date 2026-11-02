@@ -6,6 +6,19 @@ All notable changes to this project. Dates are UTC.
 
 ### Fixed
 
+- **Accessibility:** form field borders now contrast at least 3:1 in both themes
+  (were 1.44:1 light and 1.59:1 dark; new `--line-input` token).
+- The media library's Save, Replace file and Delete controls include the file
+  name in their accessible names, and the delete confirmation names the file.
+- Confirmation dialogs are announced as alert dialogs and open with focus on
+  Cancel.
+- A thin progress bar (announced as "Loading page…") appears when a page takes
+  more than 150 ms to load after clicking a link.
+- After the contact form is sent, focus moves to the confirmation.
+- The current page is underlined in the navigation, not shown by colour only.
+- Larger tap areas for footer links on phones, "All projects"-style links and
+  checkbox labels; the dashboard's content table is named by its heading.
+
 - **Social sharing:** pages set their own Open Graph data, which Next.js uses
   instead of the layout's, so `og:site_name`, `og:type` and the default sharing
   image were missing on every page. All pages now build the full set

@@ -225,7 +225,7 @@ export function MoreLink({ href, children }: { href: Route; children: ReactNode 
   return (
     <Link
       href={href}
-      className="inline-flex shrink-0 items-center gap-1 text-small font-medium text-fg-muted transition-colors hover:text-fg"
+      className="relative after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] inline-flex shrink-0 items-center gap-1 text-small font-medium text-fg-muted transition-colors hover:text-fg"
     >
       {children}
       <ArrowUpRight aria-hidden="true" className="size-4" />

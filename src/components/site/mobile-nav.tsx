@@ -49,7 +49,9 @@ export function MobileNav({ items }: { items: NavItem[] }) {
                       aria-current={active ? "page" : undefined}
                       className={cn(
                         "flex h-14 items-center border-b border-line text-h3 font-medium",
-                        active ? "text-accent" : "text-fg",
+                        active
+                          ? "text-accent underline decoration-accent decoration-2 underline-offset-[6px]"
+                          : "text-fg",
                       )}
                     >
                       {item.label}

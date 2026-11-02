@@ -98,7 +98,7 @@ export function UploadButton({
           <select
             value={access}
             onChange={(e) => setAccess(e.target.value as "public" | "private")}
-            className="h-11 rounded-[var(--radius-input)] border border-line-strong bg-surface px-3 text-body"
+            className="h-11 rounded-[var(--radius-input)] border border-line-input bg-surface px-3 text-body"
           >
             <option value="public">Public</option>
             <option value="private">Private (dashboard only)</option>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { useField } from "./field";
 
 const control =
-  "w-full rounded-[var(--radius-input)] border border-line-strong bg-surface text-body text-fg " +
+  "w-full rounded-[var(--radius-input)] border border-line-input bg-surface text-body text-fg " +
   "placeholder:text-fg-muted transition-[border-color,box-shadow] duration-150 " +
   "hover:border-fg-muted focus-visible:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 " +
   "disabled:cursor-not-allowed disabled:opacity-60 " +

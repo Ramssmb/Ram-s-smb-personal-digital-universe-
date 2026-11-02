@@ -28,7 +28,9 @@ export function DesktopNav({ items, more }: { items: NavItem[]; more: NavItem[] 
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   itemClass,
-                  active ? "text-fg" : "text-fg-muted hover:bg-surface-muted hover:text-fg",
+                  active
+                    ? "text-fg underline decoration-accent decoration-2 underline-offset-[6px]"
+                    : "text-fg-muted hover:bg-surface-muted hover:text-fg",
                 )}
               >
                 {item.label}
@@ -43,7 +45,9 @@ export function DesktopNav({ items, more }: { items: NavItem[]; more: NavItem[] 
                 className={cn(
                   itemClass,
                   "data-[state=open]:bg-surface-muted",
-                  moreActive ? "text-fg" : "text-fg-muted hover:bg-surface-muted hover:text-fg",
+                  moreActive
+                    ? "text-fg underline decoration-accent decoration-2 underline-offset-[6px]"
+                    : "text-fg-muted hover:bg-surface-muted hover:text-fg",
                 )}
               >
                 More
@@ -60,7 +64,7 @@ export function DesktopNav({ items, more }: { items: NavItem[]; more: NavItem[] 
                       <Link
                         href={item.href}
                         aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
-                        className="flex h-9 items-center rounded-md px-3 text-small text-fg outline-none data-[highlighted]:bg-surface-muted aria-[current=page]:text-accent"
+                        className="flex h-9 items-center rounded-md px-3 text-small text-fg outline-none data-[highlighted]:bg-surface-muted aria-[current=page]:text-accent aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-4"
                       >
                         {item.label}
                       </Link>

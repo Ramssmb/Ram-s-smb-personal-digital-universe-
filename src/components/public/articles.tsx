@@ -56,7 +56,7 @@ export function ProjectArticle({ project }: { project: ProjectArticleData }) {
       <Container className="pt-10 md:pt-16">
         <Link
           href="/projects"
-          className="inline-flex items-center gap-1 text-small text-fg-muted hover:text-fg"
+          className="relative after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] inline-flex items-center gap-1 text-small text-fg-muted hover:text-fg"
         >
           <ArrowLeft aria-hidden="true" className="size-4" /> All projects
         </Link>
@@ -194,7 +194,7 @@ export function JournalArticle({ entry }: { entry: JournalArticleData }) {
       <Container width="prose" className="py-10 md:py-16">
         <Link
           href="/journal"
-          className="inline-flex items-center gap-1 text-small text-fg-muted hover:text-fg"
+          className="relative after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] inline-flex items-center gap-1 text-small text-fg-muted hover:text-fg"
         >
           <ArrowLeft aria-hidden="true" className="size-4" /> Journal
         </Link>

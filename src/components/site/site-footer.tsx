@@ -19,25 +19,25 @@ export function SiteFooter({ siteName, links }: { siteName: string | null; links
     <footer className="mt-auto border-t border-line">
       <Container className="flex flex-col gap-10 py-12">
         <div className="flex flex-col gap-8 md:flex-row md:justify-between">
-          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 gap-y-2 sm:grid-cols-3">
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-x-10 sm:grid-cols-3 sm:gap-y-2">
             {allNav.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-small text-fg-muted transition-colors hover:text-fg"
+                className="inline-flex min-h-11 items-center text-small text-fg-muted transition-colors hover:text-fg sm:min-h-0"
               >
                 {item.label}
               </Link>
             ))}
             <Link
               href="/search"
-              className="text-small text-fg-muted transition-colors hover:text-fg"
+              className="inline-flex min-h-11 items-center text-small text-fg-muted transition-colors hover:text-fg sm:min-h-0"
             >
               Search
             </Link>
             <a
               href="/journal/feed.xml"
-              className="text-small text-fg-muted transition-colors hover:text-fg"
+              className="inline-flex min-h-11 items-center text-small text-fg-muted transition-colors hover:text-fg sm:min-h-0"
             >
               RSS feed
             </a>

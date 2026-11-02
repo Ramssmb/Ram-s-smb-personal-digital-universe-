@@ -98,7 +98,7 @@ export default async function AboutPage() {
                 </ul>
                 <Link
                   href="/education"
-                  className="mt-3 inline-block text-small font-medium text-accent"
+                  className="relative after:absolute after:inset-x-0 after:-inset-y-2.5 after:content-[''] mt-3 inline-block text-small font-medium text-accent"
                 >
                   Education details
                 </Link>

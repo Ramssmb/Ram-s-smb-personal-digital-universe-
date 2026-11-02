@@ -17,9 +17,14 @@ export interface DialogProps {
   children?: ReactNode;
   footer?: ReactNode;
   className?: string;
+  /** A confirmation that needs a decision: announced as an alert dialog. */
+  alert?: boolean;
 }
 
-/** Modal dialog. Radix handles focus trapping, Escape, scroll lock and aria wiring. */
+/**
+ * Modal dialog. Radix handles focus trapping, Escape, scroll lock and aria wiring.
+ * Focus starts on the element marked `data-autofocus`, if any (e.g. Cancel).
+ */
 export function Dialog({
   open,
   onOpenChange,
@@ -29,6 +34,7 @@ export function Dialog({
   children,
   footer,
   className,
+  alert = false,
 }: DialogProps) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -37,6 +43,16 @@ export function Dialog({
         <RadixDialog.Overlay className="fixed inset-0 z-50 bg-overlay data-[state=open]:animate-[fade-in_150ms_ease-out]" />
         <RadixDialog.Content
           {...(description ? {} : { "aria-describedby": undefined })}
+          {...(alert ? { role: "alertdialog" } : {})}
+          onOpenAutoFocus={(event) => {
+            const target = (event.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(
+              "[data-autofocus]",
+            );
+            if (target) {
+              event.preventDefault();
+              target.focus();
+            }
+          }}
           className={cn(
             "fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col",
             "rounded-[var(--radius-card)] border border-line bg-surface shadow-float",
@@ -118,10 +134,11 @@ export function ConfirmDialog({
       trigger={trigger}
       title={title}
       description={description}
+      alert
       footer={
         <>
           <RadixDialog.Close asChild>
-            <Button variant="secondary" disabled={busy}>
+            <Button variant="secondary" disabled={busy} data-autofocus>
               Cancel
             </Button>
           </RadixDialog.Close>

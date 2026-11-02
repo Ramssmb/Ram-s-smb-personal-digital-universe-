@@ -15,6 +15,8 @@
   --surface-muted: #f4f4f2;
   --line: #e6e5e1;
   --line-strong: #d4d3ce;
+  /* Form field borders: at least 3:1 against canvas and surface (WCAG 1.4.11). */
+  --line-input: #85858d;
   --fg: #18181b;
   --fg-muted: #5b5b63;
   --accent: #2f5bea;
@@ -41,6 +43,7 @@
   --surface-muted: #1b1b1e;
   --line: #26262a;
   --line-strong: #34343a;
+  --line-input: #6e6e78;
   --fg: #ededef;
   --fg-muted: #a0a0aa;
   --accent: #7c9bff;
@@ -67,6 +70,7 @@
     --surface-muted: #1b1b1e;
     --line: #26262a;
     --line-strong: #34343a;
+    --line-input: #6e6e78;
     --fg: #ededef;
     --fg-muted: #a0a0aa;
     --accent: #7c9bff;
@@ -94,6 +98,7 @@
   --color-surface-muted: var(--surface-muted);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-line-input: var(--line-input);
   --color-fg: var(--fg);
   --color-fg-muted: var(--fg-muted);
   --color-accent: var(--accent);
@@ -199,6 +204,16 @@
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+}
+
+/* Navigation progress bar; with reduced motion it stays still (rule above). */
+@keyframes progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
   }
 }
 

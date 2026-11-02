@@ -99,12 +99,13 @@ describe("ConfirmDialog", () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     setup(onConfirm);
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(screen.getByRole("dialog", { name: "Delete this item?" })).toBeInTheDocument();
+    expect(screen.getByRole("alertdialog", { name: "Delete this item?" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
     expect(onConfirm).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
     expect(onConfirm).toHaveBeenCalledOnce();
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 
   it("cancel closes without running the action", async () => {
@@ -113,7 +114,7 @@ describe("ConfirmDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onConfirm).not.toHaveBeenCalled();
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 
   it("stays open and shows the error when the action fails", async () => {
@@ -121,7 +122,7 @@ describe("ConfirmDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     await userEvent.click(screen.getByRole("button", { name: "Delete permanently" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("item is in use");
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 });
 

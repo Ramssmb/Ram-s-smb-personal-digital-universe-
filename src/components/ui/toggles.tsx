@@ -23,7 +23,11 @@ export function Checkbox({ label, description, className, id, ...props }: Checkb
         {...props}
       />
       <div className="flex flex-col">
-        <label htmlFor={inputId} className="cursor-pointer text-small font-medium text-fg">
+        <label
+          htmlFor={inputId}
+          // Taller click area without changing the layout.
+          className="-my-1.5 cursor-pointer py-1.5 text-small font-medium text-fg"
+        >
           {label}
         </label>
         {description && (

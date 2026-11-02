@@ -332,7 +332,7 @@ export function ContentForm(props: ContentFormProps) {
                 value={meta.visibility}
                 disabled={busy !== null}
                 onChange={(event) => void updateFlags({ visibility: event.target.value })}
-                className="h-11 rounded-[var(--radius-input)] border border-line-strong bg-surface px-3 text-body"
+                className="h-11 rounded-[var(--radius-input)] border border-line-input bg-surface px-3 text-body"
               >
                 <option value="public">Public</option>
                 <option value="private">Private (never shown publicly)</option>

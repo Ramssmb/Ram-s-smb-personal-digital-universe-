@@ -70,7 +70,7 @@ export default async function CollectionListPage({ params, searchParams }: Param
           name="q"
           defaultValue={query.q}
           placeholder={`Search ${def.label.toLowerCase()}…`}
-          className="h-11 flex-1 rounded-[var(--radius-input)] border border-line-strong bg-surface px-3"
+          className="h-11 flex-1 rounded-[var(--radius-input)] border border-line-input bg-surface px-3"
         />
         {def.publishable && (
           <>
@@ -81,7 +81,7 @@ export default async function CollectionListPage({ params, searchParams }: Param
               id="status"
               name="status"
               defaultValue={query.status ?? ""}
-              className="h-11 rounded-[var(--radius-input)] border border-line-strong bg-surface px-3"
+              className="h-11 rounded-[var(--radius-input)] border border-line-input bg-surface px-3"
             >
               <option value="">All statuses</option>
               <option value="draft">Drafts</option>

@@ -119,15 +119,16 @@ function MediaCard({ item }: { item: Item }) {
           <select
             name="access"
             defaultValue={item.access}
-            className="h-11 rounded-[var(--radius-input)] border border-line-strong bg-surface px-3 text-body"
+            className="h-11 rounded-[var(--radius-input)] border border-line-input bg-surface px-3 text-body"
           >
             <option value="public">Public</option>
             <option value="private">Private</option>
           </select>
         </label>
         <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* Hidden file names give each card's controls a distinct accessible name. */}
           <Button type="submit" variant="secondary" size="sm" loading={busy}>
-            Save
+            Save<span className="sr-only"> details of {item.originalFilename}</span>
           </Button>
           {/* A visually styled label for the hidden input keeps it keyboard-reachable. */}
           <label
@@ -137,7 +138,7 @@ function MediaCard({ item }: { item: Item }) {
               "cursor-pointer focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[var(--accent)]",
             )}
           >
-            Replace file
+            Replace file<span className="sr-only"> {item.originalFilename}</span>
             <input
               type="file"
               className="sr-only"
@@ -162,10 +163,10 @@ function MediaCard({ item }: { item: Item }) {
                 className="text-danger"
                 icon={<Trash2 aria-hidden="true" className="size-4" />}
               >
-                Delete
+                Delete<span className="sr-only"> {item.originalFilename}</span>
               </Button>
             }
-            title="Delete this file?"
+            title={`Delete ${item.originalFilename}?`}
             description="The file is removed permanently. Files still used by content cannot be deleted."
             confirmLabel="Delete file"
             onConfirm={remove}

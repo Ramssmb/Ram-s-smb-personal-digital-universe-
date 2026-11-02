@@ -73,7 +73,7 @@ export default async function OverviewPage() {
           Content
         </h2>
         <div className="mt-4 overflow-x-auto rounded-[var(--radius-card)] border border-line">
-          <table className="w-full text-left text-small">
+          <table aria-labelledby="content-heading" className="w-full text-left text-small">
             <thead className="bg-surface-muted text-fg-muted">
               <tr>
                 <th scope="col" className="px-4 py-3 font-medium">

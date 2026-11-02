@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { cookies } from "next/headers";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
+
+import { NavigationProgress } from "@/components/site/navigation-progress";
 
 import { THEME_COOKIE, parseThemePreference, themeAttribute } from "@/lib/theme";
 import { getIdentity } from "@/server/content/public";
@@ -67,7 +69,13 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en" data-theme={themeAttribute(preference)} className={inter.variable}>
-      <body className="flex min-h-dvh flex-col">{children}</body>
+      <body className="flex min-h-dvh flex-col">
+        {/* useSearchParams needs a Suspense boundary; the fallback renders nothing. */}
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }
