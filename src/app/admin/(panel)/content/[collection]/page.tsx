@@ -47,7 +47,7 @@ export default async function CollectionListPage({ params, searchParams }: Param
   const base = `/admin/content/${collection}`;
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 *:max-w-5xl">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-h1 font-semibold">{def.label}</h1>

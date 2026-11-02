@@ -28,7 +28,7 @@ export default async function MessagesPage({
   const { status = "", page } = await searchParams;
   const result = await listMessages({ status, page: Math.max(1, Number(page) || 1) });
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-6 *:max-w-4xl">
       <header>
         <h1 className="text-h1 font-semibold">Messages</h1>
         <p className="mt-2 text-fg-muted">

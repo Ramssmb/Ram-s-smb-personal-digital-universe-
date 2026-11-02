@@ -35,7 +35,7 @@ export default async function OverviewPage() {
         <Card>
           <p className="eyebrow">Profile</p>
           <p className="mt-2 text-h3 font-semibold">
-            {profile.displayName ? "Set up" : "Not set up"}
+            {profile.displayName ? "Complete" : "Not set up"}
           </p>
           <Link
             href="/admin/profile"
