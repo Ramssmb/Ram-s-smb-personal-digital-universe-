@@ -6,28 +6,21 @@
  *
  * Non-interactive (CI, provisioning): set ADMIN_EMAIL and ADMIN_PASSWORD.
  */
-import { createInterface } from "node:readline/promises";
-import { stdin, stdout } from "node:process";
-
-async function ask(question: string, hidden = false): Promise<string> {
-  const rl = createInterface({ input: stdin, output: stdout, terminal: true });
-  if (hidden) {
-    // Mask typed characters.
-    const write = (rl as unknown as { _writeToOutput: (s: string) => void })._writeToOutput;
-    (rl as unknown as { _writeToOutput: (s: string) => void })._writeToOutput = (s: string) =>
-      write.call(rl, s.includes(question) ? s : s.replace(/[^\r\n]/g, "*"));
-  }
-  const answer = await rl.question(question);
-  rl.close();
-  if (hidden) stdout.write("\n");
-  return answer;
-}
+import { ask, askHidden } from "./prompt";
 
 const email = process.env.ADMIN_EMAIL ?? (await ask("Owner email: "));
 let password = process.env.ADMIN_PASSWORD;
 if (!password) {
-  password = await ask("Password (12+ characters): ", true);
-  const again = await ask("Repeat password: ", true);
+  if (!process.stdin.isTTY) {
+    console.error("Run this in a terminal, or set ADMIN_EMAIL and ADMIN_PASSWORD.");
+    process.exit(1);
+  }
+  try {
+    password = await askHidden("Password (12+ characters): ");
+  } catch {
+    process.exit(130); // Ctrl-C
+  }
+  const again = await askHidden("Repeat password: ").catch(() => process.exit(130));
   if (password !== again) {
     console.error("The passwords do not match.");
     process.exit(1);
