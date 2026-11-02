@@ -65,6 +65,33 @@ appears until it is explicitly published**.
 
 ## ◆ Screenshots
 
+### Ram's Dev Space — public site
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/site-home.webp" alt="Ram's Dev Space home page in light mode: the name Ram, the tagline Your Personal Digital Universe, education at NIT Jalandhar and four interests"></td>
+    <td width="50%"><img src="docs/assets/screenshots/site-projects.webp" alt="Projects page in light mode with search, status and sort filters above three sample project cards"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Home</b> — name, tagline, education and interests</sub></td>
+    <td align="center"><sub><b>Projects</b> — search, status filter and sorting</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/assets/screenshots/site-journal.webp" alt="Learning journal in dark mode with search, a month filter, an archive list and two sample entries"></td>
+    <td width="50%"><img src="docs/assets/screenshots/site-contact.webp" alt="Contact page in dark mode with name, email, subject and message fields"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Journal</b> — dated entries, monthly archive, RSS</sub></td>
+    <td align="center"><sub><b>Contact</b> — validated form, spam protection, private inbox</sub></td>
+  </tr>
+</table>
+
+<sub>Brand, name, tagline, education and interests are confirmed by the owner.
+Projects and journal entries in these four screenshots are labelled
+placeholders, not real work.</sub>
+
+### Private dashboard
+
 <table>
   <tr>
     <td width="50%"><img src="docs/assets/screenshots/dashboard-overview.webp" alt="Dashboard overview: profile, journal and message cards above a table of published, draft and archived counts for every section"></td>
@@ -91,8 +118,8 @@ appears until it is explicitly published**.
   <br><sub>Phone layouts — public site (dark) and dashboard (light)</sub>
 </p>
 
-<sub>Screenshots are of the real application running locally with an empty
-content database; no sample personal data is shown.</sub>
+<sub>Dashboard screenshots are of the real application running locally with an
+empty content database; no sample personal data is shown.</sub>
 
 ## ◆ Architecture
 
