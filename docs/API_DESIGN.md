@@ -136,27 +136,30 @@ incomplete.
 
 ## 7. As built (v0.4.0)
 
-| Method             | Path                                                                             | Notes                                                              |
-| ------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| GET, POST          | `/api/v1/admin/collections/:collection`                                          | List (`q`, `status`, `page`, `pageSize`) / create (always a draft) |
-| GET, PATCH, DELETE | `/api/v1/admin/collections/:collection/:id`                                      | PATCH body `{ data, updatedAt }` with the complete form (below)    |
-| POST               | `/api/v1/admin/collections/:collection/:id/(publish\|unpublish\|archive\|flags)` | `flags` body `{ visibility?, isFeatured? }`                        |
-| POST               | `/api/v1/admin/collections/:collection/reorder`                                  | `{ ids: [...] }`                                                   |
-| GET, PUT           | `/api/v1/admin/profile`, `/api/v1/admin/settings`                                | Singletons                                                         |
-| PUT                | `/api/v1/admin/seo/:key`                                                         | Fixed page keys only                                               |
-| GET, POST          | `/api/v1/admin/media`                                                            | Upload is `multipart/form-data` (`file`, `access`, `altText`)      |
-| GET, PATCH, DELETE | `/api/v1/admin/media/:id`                                                        | Delete or make private → 409 while in use                          |
-| GET                | `/api/v1/admin/media/:id/file`                                                   | Owner-only file stream (works for private files)                   |
-| PATCH, DELETE      | `/api/v1/admin/messages/:id`                                                     | Status `new`/`read`/`archived`/`spam`                              |
-| POST               | `/api/v1/admin/account/password`                                                 | Signs out every other session                                      |
-| DELETE             | `/api/v1/admin/account/sessions`                                                 | Signs out other sessions                                           |
-| POST, DELETE       | `/api/v1/admin/account/totp`                                                     | Start two-factor setup / turn it off (password + code)             |
-| POST               | `/api/v1/admin/account/totp/confirm`                                             | Confirm setup with a code; returns the recovery codes once         |
-| POST               | `/api/v1/auth/login`, `/api/v1/auth/logout`                                      | Login returns a sign-in ticket instead of a session when 2FA is on |
-| POST               | `/api/v1/auth/totp`                                                              | Second sign-in step: ticket + authenticator or recovery code       |
-| POST               | `/api/v1/contact`                                                                | 202 on success (also for silently filed spam)                      |
-| GET                | `/api/v1/health`                                                                 |                                                                    |
-| GET                | `/media/<key>`                                                                   | Public files only, immutable cache                                 |
+| Method             | Path                                                                             | Notes                                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET, POST          | `/api/v1/admin/collections/:collection`                                          | List (`q`, `status`, `page`, `pageSize`) / create (always a draft)                                                                             |
+| GET, PATCH, DELETE | `/api/v1/admin/collections/:collection/:id`                                      | PATCH body `{ data, updatedAt }` with the complete form (below)                                                                                |
+| POST               | `/api/v1/admin/collections/:collection/:id/(publish\|unpublish\|archive\|flags)` | `flags` body `{ visibility?, isFeatured? }`                                                                                                    |
+| POST               | `/api/v1/admin/collections/:collection/reorder`                                  | `{ ids: [...] }`                                                                                                                               |
+| GET, PUT           | `/api/v1/admin/profile`, `/api/v1/admin/settings`                                | Singletons                                                                                                                                     |
+| PUT                | `/api/v1/admin/seo/:key`                                                         | Fixed page keys only                                                                                                                           |
+| GET, POST          | `/api/v1/admin/media`                                                            | Upload is `multipart/form-data` (`file`, `access`, `altText`)                                                                                  |
+| GET, PATCH, DELETE | `/api/v1/admin/media/:id`                                                        | Delete or make private → 409 while in use                                                                                                      |
+| GET                | `/api/v1/admin/media/:id/file`                                                   | Owner-only file stream (works for private files)                                                                                               |
+| POST               | `/api/v1/admin/media/uploads`                                                    | `{ filename, size, contentType, access?, altText?, mediaId? }` → `{ mode: "form" }`, or with `UPLOAD_MODE=direct` a signed PUT URL valid 5 min |
+| POST               | `/api/v1/admin/media/uploads/:id/complete`                                       | Validates and stores a direct upload; single use; 404 when expired                                                                             |
+| PATCH, DELETE      | `/api/v1/admin/messages/:id`                                                     | Status `new`/`read`/`archived`/`spam`                                                                                                          |
+| POST               | `/api/v1/admin/account/password`                                                 | Signs out every other session                                                                                                                  |
+| DELETE             | `/api/v1/admin/account/sessions`                                                 | Signs out other sessions                                                                                                                       |
+| POST, DELETE       | `/api/v1/admin/account/totp`                                                     | Start two-factor setup / turn it off (password + code)                                                                                         |
+| POST               | `/api/v1/admin/account/totp/confirm`                                             | Confirm setup with a code; returns the recovery codes once                                                                                     |
+| POST               | `/api/v1/auth/login`, `/api/v1/auth/logout`                                      | Login returns a sign-in ticket instead of a session when 2FA is on                                                                             |
+| POST               | `/api/v1/auth/totp`                                                              | Second sign-in step: ticket + authenticator or recovery code                                                                                   |
+| POST               | `/api/v1/contact`                                                                | 202 on success (also for silently filed spam)                                                                                                  |
+| GET                | `/api/v1/health`                                                                 |                                                                                                                                                |
+| GET                | `/api/cron/maintenance`                                                          | Data retention for Vercel Cron; `Authorization: Bearer CRON_SECRET`                                                                            |
+| GET                | `/media/<key>`                                                                   | Public files only, immutable cache                                                                                                             |
 
 Differences from the design above: pagination is offset-based (`page`), not
 cursor-based; preview is an owner-only page (`/admin/preview/:collection/:id`)

@@ -19,7 +19,7 @@ describe("data retention", () => {
       ('Person', 'p@x.test', 'old real message', 'archived', now() - interval '400 days')`;
 
     const removed = await runMaintenance();
-    expect(removed).toEqual({ auditLog: 1, spam: 1 });
+    expect(removed).toEqual({ auditLog: 1, spam: 1, uploads: 0 });
 
     expect((await ownerSql`SELECT key FROM rate_limits`).map((r) => r.key)).toEqual(["current"]);
     const sessions = await ownerSql`SELECT id FROM sessions`;

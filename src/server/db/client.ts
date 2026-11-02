@@ -22,6 +22,7 @@ function connect(): Connection {
   const config = env();
   const sql = postgres(config.DATABASE_URL, {
     max: config.DATABASE_POOL_MAX,
+    prepare: config.DATABASE_PREPARE,
     idle_timeout: 30,
     connect_timeout: 10,
     // Never print query parameters (they can contain personal data).

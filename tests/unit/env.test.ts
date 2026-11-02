@@ -15,6 +15,9 @@ describe("parseServerEnv", () => {
     expect(env.DATABASE_POOL_MAX).toBe(10);
     expect(env.STORAGE_DIR).toBe("./storage");
     expect(env.TRUST_PROXY_HOPS).toBe(0);
+    expect(env.DATABASE_PREPARE).toBe(true);
+    expect(env.UPLOAD_MODE).toBe("form");
+    expect(env.CRON_SECRET).toBeUndefined();
   });
 
   it("requires a long enough APP_SECRET", () => {
@@ -99,6 +102,30 @@ describe("production and optional-feature rules", () => {
         S3_ENDPOINT: "http://s3.example.test",
       }),
     ).toThrow(/S3_ENDPOINT: must use https/);
+  });
+
+  it("allows direct uploads only with object storage", () => {
+    expect(() => parseServerEnv({ ...valid, UPLOAD_MODE: "direct" })).toThrow(
+      /UPLOAD_MODE: direct uploads need STORAGE_DRIVER=s3/,
+    );
+    const direct = parseServerEnv({
+      ...valid,
+      UPLOAD_MODE: "direct",
+      STORAGE_DRIVER: "s3",
+      S3_ENDPOINT: "https://s3.example.test",
+      S3_BUCKET: "media",
+      S3_ACCESS_KEY_ID: "id",
+      S3_SECRET_ACCESS_KEY: "secret",
+    });
+    expect(direct.UPLOAD_MODE).toBe("direct");
+  });
+
+  it("parses the serverless database and cron settings", () => {
+    expect(parseServerEnv({ ...valid, DATABASE_PREPARE: "false" }).DATABASE_PREPARE).toBe(false);
+    expect(() => parseServerEnv({ ...valid, DATABASE_PREPARE: "no" })).toThrow(/DATABASE_PREPARE/);
+    expect(() => parseServerEnv({ ...valid, CRON_SECRET: "short" })).toThrow(
+      /CRON_SECRET: must be at least 16 characters/,
+    );
   });
 
   it("requires a sender and recipient when email notifications are configured", () => {

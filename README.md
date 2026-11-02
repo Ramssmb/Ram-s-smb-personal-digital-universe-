@@ -313,6 +313,8 @@ docs/                      design, API, security, deployment, audit
 | [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)                   | Visual and interaction design                 |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)                         | Production deployment, backups, rollback      |
 | [docs/DEPLOYMENT_PREPARATION.md](docs/DEPLOYMENT_PREPARATION.md) | Before deploying: costs, decisions, checklist |
+| [docs/DEPLOYMENT_VERCEL.md](docs/DEPLOYMENT_VERCEL.md)           | Vercel + Neon set-up, backups, restore        |
+| [docs/VERCEL_ARCHITECTURE.md](docs/VERCEL_ARCHITECTURE.md)       | Vercel research, architecture, decisions      |
 | [docs/CONTENT_GUIDE.md](docs/CONTENT_GUIDE.md)                   | What to enter in the dashboard                |
 | [docs/FUNCTIONAL_AUDIT.md](docs/FUNCTIONAL_AUDIT.md)             | Functional audit of the running app (v0.4.0)  |
 | [docs/ACCESSIBILITY_TESTING.md](docs/ACCESSIBILITY_TESTING.md)   | NVDA test guide; browser and Windows checks   |

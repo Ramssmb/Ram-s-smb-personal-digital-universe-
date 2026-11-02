@@ -27,6 +27,14 @@ export const serverEnvSchema = z
       .default("info"),
     DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(50).default(10),
     /**
+     * Named prepared statements. Set "false" behind a transaction-mode pooler
+     * that rejects them; Neon's pooler accepts the protocol-level ones postgres.js uses.
+     */
+    DATABASE_PREPARE: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((value) => value === "true"),
+    /**
      * Server-side secret (≥ 32 random characters). Keys for IP hashing and form
      * signing are derived from it. Rotating it logs nobody out but resets rate
      * limit buckets. Generate with: node -e "console.log(crypto.randomBytes(32).toString('base64url'))"
@@ -48,6 +56,22 @@ export const serverEnvSchema = z
     S3_BUCKET: z.string().min(3).max(63).optional(),
     S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    /**
+     * "form" (default): files are posted to the app. "direct": the browser puts
+     * the file straight into the bucket with a short-lived signed URL and the app
+     * processes it from there — needed on hosts with a small request-body limit
+     * (Vercel: 4.5 MB). Requires STORAGE_DRIVER=s3 and bucket CORS for SITE_URL.
+     */
+    UPLOAD_MODE: z.enum(["form", "direct"]).default("form"),
+
+    /** Bearer token Vercel Cron sends to /api/cron/maintenance. Unset = route disabled. */
+    CRON_SECRET: z.string().min(16, "must be at least 16 characters").optional(),
+    /** Set by Vercel: "production", "preview" or "development". */
+    VERCEL_ENV: z.string().optional(),
+    /** Set by Vercel: this deployment's host name, without https://. */
+    VERCEL_URL: z.string().optional(),
+    /** Set by Vercel: the branch's stable preview host name, without https://. */
+    VERCEL_BRANCH_URL: z.string().optional(),
 
     /**
      * Optional email notification for new contact messages, e.g.
@@ -98,6 +122,13 @@ export const serverEnvSchema = z
           message: "must use https:// in production",
         });
       }
+    }
+    if (value.UPLOAD_MODE === "direct" && value.STORAGE_DRIVER !== "s3") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["UPLOAD_MODE"],
+        message: "direct uploads need STORAGE_DRIVER=s3",
+      });
     }
     if (value.SMTP_URL) {
       if (!/^smtps?:\/\//.test(value.SMTP_URL)) {

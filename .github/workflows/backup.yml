@@ -1,0 +1,137 @@
+name: Backup
+
+# Off-site backup for the Vercel + Neon deployment (docs/DEPLOYMENT_VERCEL.md §6).
+# Daily: dump the database, copy the media files, prove the dump restores into a
+# fresh PostgreSQL, then encrypt everything with an age public key and upload it
+# to a separate backup bucket. The private key never leaves the owner's PC.
+#
+# This repository is public, so its Actions logs and artifacts are public too:
+# nothing here is uploaded as an artifact, and plaintext never leaves the runner.
+# Until the secrets below exist, the job skips with a notice.
+
+on:
+  schedule:
+    - cron: "30 21 * * *" # 03:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Encrypted off-site backup
+    runs-on: ubuntu-24.04
+    # Secrets live in the "production" environment, not at repository level.
+    environment: production
+    timeout-minutes: 30
+    env:
+      # Direct (unpooled) Neon URL for the read-only backup role.
+      BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      # Media bucket, read-only credentials.
+      MEDIA_S3_ENDPOINT: ${{ secrets.MEDIA_S3_ENDPOINT }}
+      MEDIA_S3_REGION: ${{ secrets.MEDIA_S3_REGION }}
+      MEDIA_S3_BUCKET: ${{ secrets.MEDIA_S3_BUCKET }}
+      MEDIA_S3_ACCESS_KEY_ID: ${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}
+      MEDIA_S3_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}
+      # Backup bucket in a separate project, write credentials.
+      BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+      BACKUP_S3_REGION: ${{ secrets.BACKUP_S3_REGION }}
+      BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+      BACKUP_S3_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+      # age public key (not secret), e.g. age1...
+      BACKUP_AGE_RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+      BACKUP_KEEP: "14"
+    services:
+      restore:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restore-test-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          missing=""
+          for name in BACKUP_DATABASE_URL MEDIA_S3_ENDPOINT MEDIA_S3_BUCKET MEDIA_S3_ACCESS_KEY_ID \
+                      MEDIA_S3_SECRET_ACCESS_KEY BACKUP_S3_ENDPOINT BACKUP_S3_BUCKET \
+                      BACKUP_S3_ACCESS_KEY_ID BACKUP_S3_SECRET_ACCESS_KEY BACKUP_AGE_RECIPIENT; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Backup not configured yet (missing:$missing). Skipping."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.ready == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Install age
+        if: steps.config.outputs.ready == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age
+
+      - name: Copy media files
+        if: steps.config.outputs.ready == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.MEDIA_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.MEDIA_S3_REGION || 'auto' }}
+        run: |
+          umask 077
+          mkdir -p work/media
+          aws configure set default.s3.addressing_style path
+          # Unfinished direct uploads (incoming/) are not part of the site.
+          aws s3 sync "s3://$MEDIA_S3_BUCKET/" work/media/ \
+            --endpoint-url "$MEDIA_S3_ENDPOINT" --exclude "incoming/*" --only-show-errors
+          (cd work/media && find . -type f -print0 | sort -z | xargs -0 -r sha256sum) > work/media.sha256
+          echo "Media files: $(wc -l < work/media.sha256)"
+
+      - name: Dump the database and prove it restores
+        if: steps.config.outputs.ready == 'true'
+        run: |
+          umask 077
+          # Same script as CI's backup check; restores into the empty service database.
+          bash infra/backup/dump-and-verify.sh "$BACKUP_DATABASE_URL" \
+            postgres://postgres:restore-test-only@localhost:5432/postgres work
+
+      - name: Encrypt and upload
+        if: steps.config.outputs.ready == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_S3_REGION || 'auto' }}
+        run: |
+          umask 077
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          name="site-backup-$stamp.tar.gz.age"
+          git_sha="${GITHUB_SHA}"
+          printf 'created=%s\ncommit=%s\n' "$stamp" "$git_sha" > work/manifest.txt
+          tar -C work -czf - database.dump media media.sha256 restored-counts.txt manifest.txt \
+            | age --encrypt --recipient "$BACKUP_AGE_RECIPIENT" --output "$name"
+          aws configure set default.s3.addressing_style path
+          aws s3 cp "$name" "s3://$BACKUP_S3_BUCKET/backups/$name" \
+            --endpoint-url "$BACKUP_S3_ENDPOINT" --only-show-errors
+          echo "Uploaded $name ($(du -h "$name" | cut -f1))."
+
+          # Keep the newest $BACKUP_KEEP backups (names sort by time).
+          aws s3 ls "s3://$BACKUP_S3_BUCKET/backups/" --endpoint-url "$BACKUP_S3_ENDPOINT" \
+            | awk '{print $4}' | grep '^site-backup-' | sort -r | tail -n +"$((BACKUP_KEEP + 1))" \
+            | while read -r old; do
+                aws s3 rm "s3://$BACKUP_S3_BUCKET/backups/$old" \
+                  --endpoint-url "$BACKUP_S3_ENDPOINT" --only-show-errors
+                echo "Removed old backup $old"
+              done
+
+      - name: Remove plaintext
+        if: always()
+        run: rm -rf work ./*.age

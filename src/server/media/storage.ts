@@ -151,6 +151,72 @@ const s3Driver: StorageDriver = {
   },
 };
 
+// ---------------------------------------------------------------- direct uploads (s3 only)
+
+const UPLOAD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Where a direct upload lands before the app has checked it: `incoming/<id>`,
+ * outside the public/ and private/ prefixes, so nothing there is ever served.
+ */
+function incomingUrl(id: string): string {
+  const config = env();
+  if (config.STORAGE_DRIVER !== "s3") throw new Error("direct uploads need STORAGE_DRIVER=s3");
+  if (!UPLOAD_ID.test(id)) throw new Error("invalid upload id");
+  const base = config.S3_ENDPOINT!.replace(/\/+$/, "");
+  return `${base}/${encodeURIComponent(config.S3_BUCKET!)}/incoming/${id}`;
+}
+
+/**
+ * A URL that lets the browser PUT exactly one file of exactly `byteSize` bytes
+ * and type `contentType` to `incoming/<id>` until it expires. Both headers are
+ * part of the signature, so a different size or type is refused by the store.
+ */
+export async function presignIncomingPut(
+  id: string,
+  contentType: string,
+  byteSize: number,
+  expiresSeconds: number,
+): Promise<{ url: string; headers: Record<string, string> }> {
+  const { client } = s3();
+  const url = new URL(incomingUrl(id));
+  url.searchParams.set("X-Amz-Expires", String(expiresSeconds));
+  const signed = await client.sign(url.toString(), {
+    method: "PUT",
+    headers: { "content-type": contentType, "content-length": String(byteSize) },
+    aws: { signQuery: true, allHeaders: true },
+  });
+  return { url: signed.url, headers: { "content-type": contentType } };
+}
+
+/** Size of the uploaded object, or null when nothing was uploaded. */
+export async function incomingSize(id: string): Promise<number | null> {
+  const { client } = s3();
+  const response = await client.fetch(incomingUrl(id), { method: "HEAD" });
+  await response.body?.cancel();
+  if (response.status === 404) return null;
+  if (!response.ok) await s3Fail(response, "check");
+  return Number(response.headers.get("content-length") ?? -1);
+}
+
+export async function readIncoming(id: string): Promise<Buffer | null> {
+  const { client } = s3();
+  const response = await client.fetch(incomingUrl(id));
+  if (response.status === 404) {
+    await response.body?.cancel();
+    return null;
+  }
+  if (!response.ok) await s3Fail(response, "download");
+  return Buffer.from(await response.arrayBuffer());
+}
+
+export async function removeIncoming(id: string): Promise<void> {
+  const { client } = s3();
+  const response = await client.fetch(incomingUrl(id), { method: "DELETE" });
+  await response.body?.cancel();
+  if (!response.ok && response.status !== 404) await s3Fail(response, "delete");
+}
+
 function driver(): StorageDriver {
   return env().STORAGE_DRIVER === "s3" ? s3Driver : localDriver;
 }
