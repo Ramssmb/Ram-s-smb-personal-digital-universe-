@@ -30,6 +30,7 @@ All notable changes to this project. Dates are UTC.
 
 ### Fixed
 
+- 404 pages have the title "Page not found" (they showed only the site name).
 - **404 pages keep the site navigation:** unknown public addresses (and
   missing projects or journal entries) now show the 404 message inside the
   site layout, with the header, footer and a "Search the site" link, instead

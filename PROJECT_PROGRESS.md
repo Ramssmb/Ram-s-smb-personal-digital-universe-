@@ -17,30 +17,30 @@ later; Vercel + Neon support is ready on PR #1 (not merged).
 
 ### Requirement checklist
 
-| Requirement                                                                                                                       | Status                       | Notes                                                                    |
-| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ |
-| Home: intro, hero, bio, education, interests, featured projects, skills, recent learning, achievements, contact CTA, social links | ✅ Built, tested             | Every section hides itself until it has published content                |
-| About: introduction, background, education, interests, direction, philosophy, focus                                               | ✅ Built, tested             | Nine draft sections seeded **empty**; owner writes them                  |
-| Education: institution, degree, branch, period, status, courses, achievements                                                     | ✅ Built, tested             | Seeded entry is a draft; year of study left empty (not confirmed)        |
-| Skills: categories, descriptions, proficiency labels, featured, related projects and certificates                                 | ✅ Built, tested             | Levels only if the owner sets them                                       |
-| Projects: all listed fields, screenshots, detail page, search, filters, categories                                                | ✅ Built, tested             |                                                                          |
-| Experience: all listed fields                                                                                                     | ✅ Built, tested             |                                                                          |
-| Achievements & certifications: all listed kinds, issuers, dates, verification links, images/PDFs                                  | ✅ Built, tested             | Private certificate files require a verification link before publishing  |
-| Learning journal: entries, tags, drafts, search, filters, archive, images, attachments                                            | ✅ Built, tested             |                                                                          |
-| Resources: all listed types, notes                                                                                                | ✅ Built, tested             |                                                                          |
-| Contact: form, spam protection, rate limits, inbox, retention, email notification                                                 | ✅ Built, tested             | Email needs an SMTP provider chosen by the owner                         |
-| Admin: login/logout, protected routes, owner-only role, 2FA, session revocation, sign-in activity                                 | ✅ Built, tested             |                                                                          |
-| CMS: CRUD, draft/publish/unpublish/archive, preview, visibility, featured, ordering                                               | ✅ Built, tested             |                                                                          |
-| Media: uploads, library, metadata, replace, delete unused, image optimisation, private files, local or S3 storage                 | ✅ Built, tested             | S3 tested against SeaweedFS, not a commercial provider                   |
-| Database: schema, migrations, FKs, indexes, validation, transactions, search                                                      | ✅ Built, tested             |                                                                          |
-| Backup and restore                                                                                                                | ✅ Built, **tested in CI**   | Off-server copy destination is the owner's choice                        |
-| Security: hashing, sessions, authorisation, CSRF, XSS, SQLi, headers, CSP, rate limits, uploads, secrets, log redaction           | ✅ Built, tested             | See docs/AUTH_AND_SECURITY.md                                            |
-| SEO & performance                                                                                                                 | ✅ Built, measured           | See Lighthouse below                                                     |
-| Responsive, light/dark, keyboard, accessible states                                                                               | ✅ Built, tested             | axe at three viewport sizes in both themes                               |
-| Monitoring                                                                                                                        | 🟡 Health endpoint + logs    | External uptime monitor and error alerting need the owner (free options) |
-| Deployment preparation and documentation                                                                                          | ✅ Prepared, CI smoke-tested | docs/DEPLOYMENT.md §11 launch checklist                                  |
-| **Real personal content entered and published**                                                                                   | 🟡 Started                   | Branding confirmed; everything else needs the owner (private worksheet)  |
-| **Deployed to a public domain over HTTPS**                                                                                        | ⏸ Out of scope for now       | Hosting decided after the website is finished                            |
+| Requirement                                                                                                                       | Status                       | Notes                                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Home: intro, hero, bio, education, interests, featured projects, skills, recent learning, achievements, contact CTA, social links | ✅ Built, tested             | Every section hides itself until it has published content                                                         |
+| About: introduction, background, education, interests, direction, philosophy, focus                                               | ✅ Built, tested             | Nine draft sections seeded **empty**; owner writes them                                                           |
+| Education: institution, degree, branch, period, status, courses, achievements                                                     | ✅ Built, tested             | Seeded entry is a draft; year of study left empty (not confirmed)                                                 |
+| Skills: categories, descriptions, proficiency labels, featured, related projects and certificates                                 | ✅ Built, tested             | Levels only if the owner sets them                                                                                |
+| Projects: all listed fields, screenshots, detail page, search, filters, categories                                                | ✅ Built, tested             |                                                                                                                   |
+| Experience: all listed fields                                                                                                     | ✅ Built, tested             |                                                                                                                   |
+| Achievements & certifications: all listed kinds, issuers, dates, verification links, images/PDFs                                  | ✅ Built, tested             | Private certificate files require a verification link before publishing                                           |
+| Learning journal: entries, tags, drafts, search, filters, archive, images, attachments                                            | ✅ Built, tested             |                                                                                                                   |
+| Resources: all listed types, notes                                                                                                | ✅ Built, tested             |                                                                                                                   |
+| Contact: form, spam protection, rate limits, inbox, retention, email notification                                                 | ✅ Built, tested             | Email needs an SMTP provider chosen by the owner                                                                  |
+| Admin: login/logout, protected routes, owner-only role, 2FA, session revocation, sign-in activity                                 | ✅ Built, tested             |                                                                                                                   |
+| CMS: CRUD, draft/publish/unpublish/archive, preview, visibility, featured, ordering                                               | ✅ Built, tested             |                                                                                                                   |
+| Media: uploads, library, metadata, replace, delete unused, image optimisation, private files, local or S3 storage                 | ✅ Built, tested             | S3 tested against SeaweedFS, not a commercial provider                                                            |
+| Database: schema, migrations, FKs, indexes, validation, transactions, search                                                      | ✅ Built, tested             |                                                                                                                   |
+| Backup and restore                                                                                                                | ✅ Built, **tested in CI**   | Off-server copy destination is the owner's choice                                                                 |
+| Security: hashing, sessions, authorisation, CSRF, XSS, SQLi, headers, CSP, rate limits, uploads, secrets, log redaction           | ✅ Built, tested             | See docs/AUTH_AND_SECURITY.md                                                                                     |
+| SEO & performance                                                                                                                 | ✅ Built, measured           | See Lighthouse below                                                                                              |
+| Responsive, light/dark, keyboard, accessible states                                                                               | ✅ Built, tested             | axe at three viewport sizes in both themes                                                                        |
+| Monitoring                                                                                                                        | 🟡 Health endpoint + logs    | External uptime monitor and error alerting need the owner (free options)                                          |
+| Deployment preparation and documentation                                                                                          | ✅ Prepared, CI smoke-tested | docs/DEPLOYMENT.md §11 launch checklist                                                                           |
+| **Real personal content entered and published**                                                                                   | 🟡 In progress               | Profile and site settings saved locally; the rest entered as unpublished drafts awaiting the owner's confirmation |
+| **Deployed to a public domain over HTTPS**                                                                                        | ⏸ Out of scope for now       | Hosting decided after the website is finished                                                                     |
 
 ## Status
 
@@ -119,8 +119,8 @@ site. Page weight is 260–310 KB.
 | Lint / typecheck / format / build | Clean                        |                                                                                                                                                            |
 | CI (GitHub Actions)               | See CHANGELOG / final report | quality, integration (+ S3 on SeaweedFS + retention), e2e, production smoke test (+ backup/restore), audit                                                 |
 
-The local database is a temporary portable PostgreSQL 17, because Docker
-cannot run on this machine without WSL. The production-stack and S3 tests run
+The local database is a portable PostgreSQL 17 (moved to a permanent folder
+on 2026-11-03), because Docker cannot run on this machine without WSL. The production-stack and S3 tests run
 in CI only.
 
 ## Known limitations
@@ -139,8 +139,9 @@ in CI only.
 
 ## Actions needed from the owner (launch blockers)
 
-1. **Content (now):** answer the content questions one at a time; nothing is
-   published without approval.
+1. **Content (now):** confirm the remaining details (project status, links,
+   dates) one question at a time, then approve publishing each section.
+   Nothing is published without approval.
 2. **Local account:** password changed 2026-11-02; turn on two-factor
    authentication and test a recovery code.
 3. **Later — hosting:** Vercel (PR #1, docs/DEPLOYMENT_VERCEL.md) or a Docker
